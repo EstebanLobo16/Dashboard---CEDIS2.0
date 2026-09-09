@@ -4,11 +4,12 @@ Réplica del tablero de Cobranza, que está completo y publicando en producción
 Almacén, catálogos, control de administradores, motor de proceso, aplicación web,
 histórico navegable y automatización: todo eso viene heredado y funcionando.
 
-Estado: **etapas 1 y 2 de 7** · la identidad del reporte y la ingesta. Lo que falta —la ingesta, las
+Estado: **etapas 1, 2 y 3 de 7** · la identidad, la ingesta y los catálogos. Lo que falta —la ingesta, las
 semillas y el ensayo— está en **`docs/06-plan-cedis.md`**.
 
-> ⚠ **No corras `instalar()` todavía.** `02_Semillas.gs` sigue trayendo los
-> catálogos de Cobranza; se reemplazan en la etapa 3.
+> `02_Semillas.gs` ya trae los catálogos de CEDIS, así que `instalar()` siembra
+> las reglas correctas. Faltan los tres parámetros de las decisiones 3, 4 y 5,
+> que llegan en la etapa 4 junto con el código que los aplica.
 
 Para operarlo mes con mes: **`docs/05-operacion.md`**. Este archivo es para quien
 toque el código.

@@ -11,6 +11,7 @@ Lo que corre fuera de Apps Script.
 | `montar_tablero.js` | Arma el tablero en un HTML abrible, con los datos de un paquete real |
 | `probar_ingesta.js` | Corre el `leerFuentes_` real contra un Drive simulado y cuenta las conversiones |
 | `probar_identidad.js` | Revisa que la identidad del reporte esté completa y que nadie la lleve escrita duro |
+| `armar_fuentes_cedis.py` | Arma el `fuentes.json` del motor desde los archivos que entrega el área |
 
 ## Aligerar los archivos crudos
 

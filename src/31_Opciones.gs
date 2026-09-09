@@ -33,6 +33,8 @@ function opcionesDelCorte_(periodo, fechaCorte) {
     nombresDeAgrupacion: nombresDeAgrupacion_(),
     nivelGerencial: nivelGerencial_,
     puestoDelPlan: puestoDelPlan_,
+    puestosEspecificosExtra: puestosEspecificosExtra_,
+    centrosDeCostoDelArea: centrosDeCostoDelArea_(),
     esFamiliaDeCentros: esFamiliaDeCentros_,
 
     /**

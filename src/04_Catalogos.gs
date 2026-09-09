@@ -176,6 +176,46 @@ function nivelGerencial_(puesto) {
   return fila ? String(fila.nivel_matriz).trim() : '';
 }
 
+/**
+ * Los centros de costo que el área declara suyos, por su número.
+ *
+ * En CEDIS son 34, y los 34 aparecen en los datos: la lista no saca a nadie. Se
+ * siembra igual, para que el día que aparezca un centro de costo que nadie
+ * declaró, el tablero lo diga en vez de contarlo en silencio. Vacía = sin
+ * revisión.
+ */
+function centrosDeCostoDelArea_() {
+  return catalogo_('CentrosCosto')
+    .map((f) => soloDigitos_(f.centro_costo))
+    .filter(Boolean);
+}
+
+/**
+ * Puestos del plan específico que el catálogo agrega a los que trae el archivo.
+ *
+ * Existe porque el PDT de operación de CEDIS trae `Colaboradores_especificos`
+ * **vacío**: solo encabezados. Sin esto, la especialización de conductores no le
+ * llegaría a los 4,858 choferes que sí la tienen en las finalizaciones. Los
+ * puestos y sus centros están en el PDF de lógicas, así que el dato existe —
+ * lo que falta es el renglón en el archivo.
+ *
+ * `centros` es la lista blanca de centros de costo, separada por comas. Vacía =
+ * aplica en todos.
+ */
+function puestosEspecificosExtra_(familia) {
+  return catalogo_('PuestosEspecificos')
+    .filter((f) => textoClave_(f.plan) === textoClave_(familia))
+    .filter((f) => String(f.puesto || '').trim())
+    .map((f) => ({
+      id: String(f.id || '').trim(),
+      puesto: String(f.puesto || '').trim(),
+      centrosDeCosto: '',
+      centrosQueNoAplican: [],
+      centrosQueSiAplican: String(f.centros || '').split(',')
+        .map((c) => c.trim()).filter(Boolean),
+    }));
+}
+
 /** La definición de una fuente por su clave (patrón de archivo, pestaña, etc.). */
 function fuente_(clave) {
   const fila = catalogo_('Fuentes').find((f) => textoClave_(f.clave) === textoClave_(clave));

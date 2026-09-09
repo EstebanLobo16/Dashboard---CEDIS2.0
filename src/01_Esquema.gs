@@ -22,6 +22,8 @@ const ESQUEMA_CATALOGOS = Object.freeze({
   Agrupaciones:       ['agrupacion', 'curso'],
   NivelesGerencial:   ['puesto', 'nivel_matriz', 'nota'],
   ExcepcionImpresion: ['centro', 'puestos', 'nota'],
+  CentrosCosto:       ['centro_costo', 'nombre', 'nota'],
+  PuestosEspecificos: ['plan', 'id', 'puesto', 'centros', 'nota'],
   Fuentes:            ['clave', 'patron', 'obligatorio', 'pestana', 'nota'],
 });
 

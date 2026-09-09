@@ -88,11 +88,14 @@ const alias = catalogo('AliasCursos');
 const agrupaciones = catalogo('Agrupaciones');
 const niveles = catalogo('NivelesGerencial');
 const excepciones = catalogo('ExcepcionImpresion');
+const aliasPuestos = catalogo('AliasPuestos');
+const centrosCosto = catalogo('CentrosCosto');
+const puestosEspecificos = catalogo('PuestosEspecificos');
+const soloDigitos = (v) => { const m = String(v == null ? '' : v).match(/\d+/); return m ? String(Number(m[0])) : ''; };
 
 const opciones = {
   periodo: param('PERIODO', '2026-08'),
   fechaCorte: param('FECHA_CORTE', '2026-08-31'),
-  padron: textoClave_(param('PADRON', 'PLANTA')) === 'DETALLE' ? 'DETALLE' : 'PLANTA',
   respetarMatriz: siNo('RESPETAR_MATRIZ_GERENCIAL', true),
   deduplicar: siNo('DEDUPLICAR_FINALIZACIONES', true),
   soloOperacion: siNo('FILTRAR_CATEGORIA_OPERACION', false),
@@ -129,6 +132,22 @@ const opciones = {
     const f = niveles.find((n) => textoClave_(n.puesto) === textoClave_(puesto));
     return f ? String(f.nivel_matriz).trim() : '';
   },
+  puestoDelPlan: (puesto) => {
+    const f = aliasPuestos.find((a) => textoClave_(a.puesto_en_datos) === textoClave_(puesto));
+    const destino = f ? String(f.puesto_en_plan || '').trim() : '';
+    return destino || String(puesto || '').trim();
+  },
+  puestosEspecificosExtra: (familia) => puestosEspecificos
+    .filter((f) => textoClave_(f.plan) === textoClave_(familia))
+    .filter((f) => String(f.puesto || '').trim())
+    .map((f) => ({
+      id: String(f.id || '').trim(),
+      puesto: String(f.puesto || '').trim(),
+      centrosDeCosto: '',
+      centrosQueNoAplican: [],
+      centrosQueSiAplican: String(f.centros || '').split(',').map((c) => c.trim()).filter(Boolean),
+    })),
+  centrosDeCostoDelArea: centrosCosto.map((f) => soloDigitos(f.centro_costo)).filter(Boolean),
   esFamiliaDeCentros: (valor) => {
     const familia = textoClave_(param('FAMILIA_CENTRO_COSTOS', '007'));
     const d = String(valor || '').match(/\d+/);

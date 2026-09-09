@@ -6,63 +6,55 @@
  * editar sin tocar nada de esto. Estas semillas se escriben UNA vez, al correr
  * instalar(); después el archivo manda y este código ya no lo pisa.
  *
- * Las decisiones que quedaron abiertas en docs/00-propuesta.md §7 están
- * sembradas con la recomendación de la propuesta. Cambiar de opinión es cambiar
- * un renglón en la hoja, no volver a desplegar.
+ * Nada de lo que sigue está inventado: sale del PDF de lógicas, de los dos PDT,
+ * o de medir los tres CSV que entregó el área. Donde hubo que interpretar, lo
+ * dice la columna `nota`, para que quien sepa pueda corregirlo sin preguntarle a
+ * nadie y sin volver a desplegar.
  *
- * ⚠ PENDIENTE — ETAPA 3
- *
- * Todo lo que sigue es TODAVÍA CONTENIDO DE COBRANZA: las 15 regiones, los
- * puestos gerenciales, los centros del Centro de Impresión y los patrones de
- * archivo. La etapa 1 solo cambió la identidad del reporte (00_Config.gs); las
- * semillas se reemplazan en la etapa 3, con los datos ya medidos en
+ * Los números de los comentarios son del corte 2026-08 y están en
  * docs/06-plan-cedis.md §2.
- *
- * NO corras instalar() en producción hasta entonces: crearía la hoja de
- * Catálogos de CEDIS con las reglas de Cobranza dentro.
  */
 
 const SEMILLAS = Object.freeze({
 
   Parametros: [
-    ['PADRON', 'PLANTA', 'texto',
-      'Quién define el universo de Cobranza. PLANTA = la Planta por Posiciones (censo del área). ' +
-      'DETALLE = toda la nómina filtrada por puesto del plan, como hacía el cuaderno. Decisión 1.'],
     ['RESPETAR_MATRIZ_GERENCIAL', 'SI', 'si_no',
       'Si SI, un curso del plan Gerencial solo aplica al nivel jerárquico marcado con 1 en la ' +
-      'matriz del PDT. Si NO, los 20 cursos aplican a los 8 puestos por igual. Decisión 2.'],
+      'matriz del PDT. Si NO, los 22 cursos aplican a los 57 puestos por igual.'],
     ['ESPECIALIZACION_COMO_CURSO', 'NO', 'si_no',
-      'Si NO, "Formación de Conductores Cobranza 2026" no cuenta como curso: es la agrupación de ' +
-      'los tres que aparecen en la pestaña Agrupaciones. Decisión 3.'],
+      'Si NO, "Formación de Conductores CEDIS 2026" no cuenta como curso: es la agrupación de ' +
+      'los tres que aparecen en la pestaña Agrupaciones.'],
     ['CURSO_SIN_FUENTE', 'PENDIENTE', 'texto',
       'Qué hacer con un curso del plan que no aparece nunca en las finalizaciones, una vez ' +
       'agotados los alias. PENDIENTE = cuenta como asignado y nadie lo completa. EXCLUIR = sale ' +
-      'del plan. Decisión 4.'],
+      'del plan. Con los tres CSV y los dos alias no debería quedar ninguno.'],
     ['DEDUPLICAR_FINALIZACIONES', 'SI', 'si_no',
-      'Si SI, una misma persona+curso cuenta una sola vez aunque aparezca en P1 y P2. ' +
-      'Si NO, se replica el comportamiento del proceso anterior. Decisión 5.'],
-    ['FILTRAR_CATEGORIA_OPERACION', 'NO', 'si_no',
-      'Si SI, solo entran las personas con Categoría de asignación = Operación. ' +
-      'Afecta a 198 de 12,472 en el corte 01 AGO 26. Decisión 6.'],
-    ['FAMILIA_CENTRO_COSTOS', '007', 'texto',
-      'La familia de centro de costo de Cobranza. Cuando la columna "Centros de costos" del plan ' +
-      'específico dice "007 Cobranzas" se refiere a toda el área, no a un centro: la restricción ' +
-      'real es la lista de ExcepcionImpresion. Decisión 9, confirmada por el área.'],
+      'Si SI, una misma persona+curso cuenta una sola vez. Aquí pesa más que en Cobranza: los ' +
+      'tres CSV traen 517,615 filas para 425,811 pares persona+curso, o sea 91,804 repeticiones ' +
+      '(17.7 por ciento), y casi todas están DENTRO de un mismo archivo. Sin esto el avance se ' +
+      'calcula sobre un denominador inflado en una sexta parte.'],
+    ['FILTRAR_CATEGORIA_OPERACION', 'SI', 'si_no',
+      'Si SI, solo entran las personas con Tipo Posición = Operación. El PDF lo pide ' +
+      'textualmente para CEDIS: "en categoría de asignación solamente se contempla el rubro de ' +
+      'Operación". En los datos de agosto casi todo ya viene filtrado (1,959 filas de 517,615 ' +
+      'dicen STAFF), así que hoy cambia poco; está encendido para el día que el área exporte ' +
+      'sin filtrar.'],
+    ['FAMILIA_CENTRO_COSTOS', '', 'texto',
+      'Vacío a propósito. En Cobranza esto valía "007" porque el PDT decía "007 Cobranzas" para ' +
+      'referirse a toda el área. CEDIS tiene 34 centros de costo, no una familia, y su plan ' +
+      'específico sí nombra centros concretos en "Centros que si aplican". Ver CentrosCosto.'],
     ['BASE_ANTIGUEDAD', 'PUESTO', 'texto',
       'Desde cuándo se cuenta la antigüedad que decide si un curso aplica. PUESTO = desde la ' +
       'fecha de asignación del puesto actual, que es cuando un puesto trae sus cursos ' +
-      'obligatorios. EMPRESA = desde la contratación, como se calculaba antes. Sobre el corte ' +
-      '01 AGO 26 la mediana pasa de 796 días a 329.'],
+      'obligatorios. EMPRESA = desde la contratación. La mediana en el puesto es de 471 días.'],
     ['SIN_FECHA_CONTRATACION', 'EXCLUIR', 'texto',
-      'Qué hacer con quien está en el padrón pero no tiene fecha de contratación en ninguna ' +
-      'fuente (1,139 de 12,278 en el corte 01 AGO 26, casi siempre altas posteriores al corte ' +
-      'del Detalle Colaborador). EXCLUIR = sale del tablero, y Control deja constancia de ' +
-      'cuántos fueron. ANTIGUEDAD_CERO = entra pero sin cursos, así que aparece con 0 de 0. ' +
-      'TODOS = recibe el plan completo. No cambia el avance en ningún caso, solo el conteo de ' +
-      'colaboradores. Decisión 10.'],
+      'Qué hacer con quien no tiene fecha utilizable. En CEDIS el padrón trae las dos fechas de ' +
+      'las 15,252 personas, así que esto casi no aplica: solo alcanza a las 76 fechas centinela ' +
+      'y a las 157 posteriores al corte. EXCLUIR = sale del tablero y Control deja constancia. ' +
+      'ANTIGUEDAD_CERO = entra sin cursos. TODOS = recibe el plan completo.'],
     ['DIAS_POR_MES', '30', 'numero',
       'Conversión del "Rango de meses para cursar" del plan a días. Un curso aplica cuando ' +
-      'dias_laborados >= minimo_del_rango * este valor.'],
+      'dias_en_puesto >= minimo_del_rango por este valor.'],
     ['NUEVO_INGRESO_DIAS', '90', 'numero',
       'Debajo de cuántos días laborados se marca a un colaborador como nuevo ingreso.'],
     ['PERIODO', '', 'texto',
@@ -77,73 +69,211 @@ const SEMILLAS = Object.freeze({
   // Se llena en la instalación con quien la corre; ver instalar().
   Administradores: [],
 
-  // Las 15 regiones oficiales de Cobranza (PDF de lógicas, página 1).
-  // El orden es el del documento, y es el que usa el tablero cuando no ordena por avance.
+  // Las 26 regiones nacionales de CEDIS (PDF de lógicas, página 3), en el orden
+  // del documento, que es el que usa el tablero cuando no ordena por avance.
+  // Los nombres son los de los DATOS, no los del PDF: tres vienen mal escritos o
+  // truncados allá. Ver MapaRegiones.
   Regiones: [
-    ['TORREON', 1], ['CULIACAN', 2], ['HERMOSILLO', 3], ['MEXICALI', 4], ['LEON', 5],
-    ['MONTERREY', 6], ['TOLUCA', 7], ['GUADALAJARA', 8], ['QUERETARO', 9],
-    ['CUAUTITLAN IZCALLI', 10], ['PUEBLA', 11], ['VERACRUZ', 12], ['IXTAPALUCA', 13],
-    ['VILLAHERMOSA', 14], ['MERIDA', 15],
+    ['Veracruz', 1], ['Los Mochis', 2], ['Hermosillo', 3], ['Mérida', 4],
+    ['León', 5], ['Toluca', 6], ['Guadalajara', 7], ['Tecámac', 8],
+    ['Ixtapaluca', 9], ['Monterrey', 10], ['Villahermosa', 11], ['Texcoco', 12],
+    ['Monterrey II', 13], ['Cuautitlán Izcalli', 14], ['Mexicali', 15], ['Guadalajara II', 16],
+    ['Oaxaca', 17], ['Torreón', 18], ['Azcapotzalco', 19], ['Culiacán', 20],
+    ['Puebla', 21], ['Iztapalapa', 22], ['San Luis Potosí', 23], ['Ciudad Juárez', 24],
+    ['Puebla II', 25], ['León II', 26],
   ],
 
-  // Cuatro centros del catálogo CENTROS-TIPOCENTROS apuntan a regiones que no
-  // están entre las 15 oficiales. Decisión 7: se mapean a su región base y se
-  // avisa al dueño del catálogo para que lo corrija en la fuente.
+  // Tres de las 26 se escriben distinto en el PDF y en los datos. La
+  // normalización resuelve acentos y mayúsculas sola; esto no lo alcanza.
   MapaRegiones: [
-    ['CULIACAN DIV I', 'CULIACAN', 'Fuera de las 15 oficiales. Corregir en CENTROS-TIPOCENTROS.'],
-    ['IZTAPALAPA DIV III', 'IXTAPALUCA', 'Fuera de las 15 oficiales. Corregir en CENTROS-TIPOCENTROS.'],
-    ['LEON DIV II', 'LEON', 'Fuera de las 15 oficiales. Corregir en CENTROS-TIPOCENTROS.'],
-    ['QUERETARO DIV IV', 'QUERETARO', 'Fuera de las 15 oficiales. Corregir en CENTROS-TIPOCENTROS.'],
+    ['Azcalpotzalco', 'Azcapotzalco',
+      'Está mal escrito EN LOS DATOS ("Azcal", no "Azcap"). Avisar al dueño de la fuente.'],
+    ['CD Juarez', 'Ciudad Juárez', 'El PDF la abrevia; el nombre bueno es el de los datos.'],
+    ['Cuautitlán Izca', 'Cuautitlán Izcalli',
+      'El PDF viene truncado; el nombre bueno es el de los datos.'],
   ],
 
-  // El cruce plan ↔ finalizaciones ya compara por nombre normalizado (sin
-  // acentos, mayúsculas, un solo espacio), así que los desajustes de
-  // "Entorno Laboral Ético" vs "entorno laboral ético" se resuelven solos y no
-  // necesitan renglón aquí. Esta pestaña es para lo que la normalización no
-  // alcanza: cursos que cambiaron de nombre, o que salieron del plan.
+  // El cruce plan <-> finalizaciones compara por nombre normalizado (sin
+  // acentos, mayúsculas, un solo espacio), así que "Construcción de un Entorno
+  // Laboral Ético" contra "...entorno laboral ético" se resuelve solo. Esta
+  // pestaña es para lo que la normalización no alcanza.
+  //
+  // Con estos dos renglones los 30 cursos del plan cruzan, y
+  // cursosDelPlanSinFuente queda en 0.
   AliasCursos: [
-    ['Socialización del Código de Ética', 'Socialización del Código de Ética Para Líderes', 'ALIAS',
-      'En las finalizaciones se llama "…Para Líderes". Es el mismo curso: lo tienen 1,525 personas ' +
-      'y todas ocupan uno de los 8 puestos del plan gerencial, ninguna fuera. Con el alias pasa de ' +
-      '0% a 42.4% de avance.'],
+    ['Introducción a la Seguridad y Salud Laboral CEDIS',
+      'Introducción a la Seguridad y Salud Laboral en CEDIS', 'ALIAS',
+      'El PDT de operación lo escribe sin el "en"; el gerencial y las finalizaciones, con él. ' +
+      'Es el mismo curso (CU-C-2191-099).'],
+    ['Socialización del Código de Ética',
+      'Socialización del Código de Ética Para Líderes', 'ALIAS',
+      'En las finalizaciones se llama "...Para Líderes": 15,255 filas. Es exactamente el mismo ' +
+      'alias que ya existe en el tablero de Cobranza.'],
   ],
 
-  // Traducción de puesto entre los datos y el plan. Se llena en la etapa 3.
-  AliasPuestos: [],
+  // El padrón y el plan no siempre llaman igual al mismo puesto.
+  AliasPuestos: [
+    ['COORDINADOR DE TRANSPORTE', 'COORDINADOR',
+      'El plan gerencial dice "COORDINADOR" a secas. Son 26 personas, y sí tienen la ' +
+      'especialización de conductores en las finalizaciones: sin este renglón quedarían sin ' +
+      'plan y fuera del tablero.'],
+  ],
 
-  // "Formación de Conductores Cobranza 2026" no es un curso: es el nombre de la
-  // especialización que se compone de estos tres (PDF de lógicas, página 1).
+  // "Formación de Conductores CEDIS 2026" no es un curso: es el nombre de la
+  // especialización que se compone de estos tres (PDF de lógicas, página 3, y
+  // Cursos_especificos de los dos PDT). Contarla infla el denominador con algo
+  // que nadie puede completar.
   Agrupaciones: [
-    ['Formación de Conductores Cobranza 2026', 'Responsabilidad al volante Cobranza'],
-    ['Formación de Conductores Cobranza 2026', 'Sesión Virtual de Conducción preventiva en Cobranza'],
-    ['Formación de Conductores Cobranza 2026', 'Práctica de Conductor al volante Cobranza'],
+    ['Formación de Conductores CEDIS 2026', 'Responsabilidad al volante'],
+    ['Formación de Conductores CEDIS 2026', 'Sesión Virtual de Conducción Preventiva'],
+    ['Formación de Conductores CEDIS 2026', 'Práctica de Conductor al volante'],
   ],
 
   // La pestaña Cursos_asignados del PDT gerencial marca con 1 qué nivel recibe
   // cada curso, pero los encabezados de esas columnas no son nombres de puesto.
-  // Esta tabla es el puente. Los dos renglones marcados "por confirmar" son mi
-  // lectura, no un dato de la fuente.
+  // Esta tabla es el puente, para los 57 puestos del plan gerencial.
+  //
+  // Solo hay TRES bandas que cambien algo, porque la matriz solo distingue tres:
+  //
+  //   Jefes y Coordinadores · Gerente Operación     22 cursos (todos)
+  //   Gerente de Zona/Gte Sr                        18  (sin los 4 de seguridad operativa)
+  //   Gerente Regional · Gerente Divisional         15  (sin, además, "Conociendo los CEDIS"
+  //                                                      y los tres VALORES)
+  //
+  // Por eso la mayoría de los renglones marcados "por confirmar" no mueven ningún
+  // número: caen dentro de la misma banda. Sobre el corte de agosto, 1,071 de las
+  // 1,114 personas con plan gerencial están en las dos bandas que reciben los 22.
+  //
+  // NO uses "Director Corporativo o Director General": esa columna del PDT viene
+  // SIN MARCAS, así que quien caiga ahí recibiría CERO cursos. Ningún puesto de
+  // CEDIS está en ese nivel.
+  //
+  // Un puesto que falte aquí recibe TODOS los cursos, y el motor lo avisa.
   NivelesGerencial: [
-    ['JEFE DE OPERACION COBRANZA', 'Jefes y Coordinadores', ''],
-    ['JEFE DE PROMOCION DOMICILIARIA', 'Jefes y Coordinadores', ''],
-    ['ENTRENAMIENTO', 'Jefes y Coordinadores', 'Por confirmar con el dueño del PDT.'],
-    ['GERENTE DE OPERACION COBRANZA', 'Gerente Operación', ''],
-    ['GERENTE DE ZONA DE COBRANZA', 'Gerente de Zona/Gte Sr', ''],
-    ['ENTRENAMIENTO ZONA', 'Gerente de Zona/Gte Sr', 'Por confirmar con el dueño del PDT.'],
-    ['GERENTE REGIONAL DE OPERACION COBRANZA', 'Gerente Regional', ''],
-    ['GERENTE DIVISIONAL DE COBRANZA', 'Gerente Divisional o Director de Área', ''],
+    ['JEFE DE REPOSICION', 'Jefes y Coordinadores', ''],
+    ['JEFE DE ACTIVACION DE MOTOS', 'Jefes y Coordinadores', ''],
+    ['JEFE DE DESCARGA', 'Jefes y Coordinadores', ''],
+    ['JEFE DE TRANSPORTE', 'Jefes y Coordinadores', ''],
+    ['JEFE DE HABILITADO', 'Jefes y Coordinadores', ''],
+    ['JEFE DE CEDIS ROPA', 'Jefes y Coordinadores', ''],
+    ['JEFE DE TALLER DE SERVICIOS', 'Jefes y Coordinadores', ''],
+    ['JEFE DE TRASLADO', 'Jefes y Coordinadores', ''],
+    ['JEFE DE CEDIS', 'Jefes y Coordinadores', ''],
+    ['JEFE DE PISO CEDIS', 'Jefes y Coordinadores', ''],
+    ['JEFE DE CEDIS COLGADO', 'Jefes y Coordinadores', ''],
+    ['JEFE DE EMBARQUES', 'Jefes y Coordinadores', ''],
+    ['JEFE DE ENVIO A CLIENTES', 'Jefes y Coordinadores', ''],
+    ['JEFE DE LOTEO', 'Jefes y Coordinadores', ''],
+    ['JEFE DE RACK', 'Jefes y Coordinadores', ''],
+    ['JEFE DE TALLER AUTOMOTRIZ', 'Jefes y Coordinadores', ''],
+    ['JEFE DE MANTENIMIENTO', 'Jefes y Coordinadores', ''],
+    ['JEFE DE OFICINA CONTROL', 'Jefes y Coordinadores', ''],
+    ['SUPERVISOR DE UNIDADES', 'Jefes y Coordinadores', ''],
+    ['INSPECTOR DE CALIDAD', 'Jefes y Coordinadores', ''],
+    ['CENTRALIZADOR', 'Jefes y Coordinadores', ''],
+    ['ENTRENAMIENTO', 'Jefes y Coordinadores', 'Colaborador individual, no jefe. Mi lectura, por confirmar. No mueve cursos: la banda recibe los 22 igual.'],
+    ['PLANEADOR DE OLAS', 'Jefes y Coordinadores', 'Colaborador individual, no jefe. Mi lectura, por confirmar. No mueve cursos: la banda recibe los 22 igual.'],
+    ['ESPECIALISTA DE WMS', 'Jefes y Coordinadores', 'Colaborador individual, no jefe. Mi lectura, por confirmar. No mueve cursos: la banda recibe los 22 igual.'],
+    ['ESPECIALISTA DE DATOS CDS', 'Jefes y Coordinadores', 'Colaborador individual, no jefe. Mi lectura, por confirmar. No mueve cursos: la banda recibe los 22 igual.'],
+    ['CIENTIFICO DE DATOS CDS', 'Jefes y Coordinadores', 'Colaborador individual, no jefe. Mi lectura, por confirmar. No mueve cursos: la banda recibe los 22 igual.'],
+    ['INGENIERO DE CONTROL', 'Jefes y Coordinadores', 'Colaborador individual, no jefe. Mi lectura, por confirmar. No mueve cursos: la banda recibe los 22 igual.'],
+    ['INGENIERO DE PRODUCTIVIDAD', 'Jefes y Coordinadores', 'Colaborador individual, no jefe. Mi lectura, por confirmar. No mueve cursos: la banda recibe los 22 igual.'],
+    ['TEAM COACH', 'Jefes y Coordinadores', 'Colaborador individual, no jefe. Mi lectura, por confirmar. No mueve cursos: la banda recibe los 22 igual.'],
+    ['FUNCIONAL', 'Jefes y Coordinadores', 'Colaborador individual, no jefe. Mi lectura, por confirmar. No mueve cursos: la banda recibe los 22 igual.'],
+    ['CONSULTOR', 'Jefes y Coordinadores', 'Colaborador individual, no jefe. Mi lectura, por confirmar. No mueve cursos: la banda recibe los 22 igual.'],
+    ['CONSULTOR DE INGENIERIA DE CEDIS', 'Jefes y Coordinadores', 'Colaborador individual, no jefe. Mi lectura, por confirmar. No mueve cursos: la banda recibe los 22 igual.'],
+    ['LIDER DE PROYECTO', 'Jefes y Coordinadores', 'Colaborador individual, no jefe. Mi lectura, por confirmar. No mueve cursos: la banda recibe los 22 igual.'],
+    ['DUEÑO DE PRODUCTO', 'Jefes y Coordinadores', 'Colaborador individual, no jefe. Mi lectura, por confirmar. No mueve cursos: la banda recibe los 22 igual.'],
+    ['GERENTE DE AREA CEDIS', 'Gerente Operación', ''],
+    ['GERENTE DE DISTRIBUCION', 'Gerente Operación', ''],
+    ['GERENTE SUPLENTE', 'Gerente Operación', ''],
+    ['GERENTE DE EMBARQUES', 'Gerente Operación', ''],
+    ['GERENTE DE TRANSPORTE', 'Gerente Operación', ''],
+    ['GERENTE DE TRASLADO', 'Gerente Operación', ''],
+    ['GERENTE DE DESCARGA', 'Gerente Operación', ''],
+    ['GERENTE DE OFICINA CONTROL', 'Gerente Operación', ''],
+    ['GERENTE DE TALLER AUTOMOTRIZ', 'Gerente Operación', ''],
+    ['GERENTE DE RACK', 'Gerente Operación', ''],
+    ['GERENTE DE MANTENIMIENTO', 'Gerente Operación', ''],
+    ['GERENTE DE OPERACION CEDIS', 'Gerente Operación', ''],
+    ['GERENTE DE PRODUCTO', 'Gerente Operación', 'Puesto corporativo, no de piso. Mi lectura, por confirmar. Hoy no tiene a nadie.'],
+    ['GERENTE DE PROYECTOS', 'Gerente Operación', 'Puesto corporativo, no de piso. Mi lectura, por confirmar. Hoy no tiene a nadie.'],
+    ['GERENTE DE ZONA CEDIS', 'Gerente de Zona/Gte Sr', 'EL ÚNICO RENGLÓN QUE MUEVE UN NÚMERO HOY: 43 personas que en esta banda no reciben los 4 cursos de seguridad operativa.'],
+    ['GERENTE SR DE SOLUCIONES DE TI', 'Gerente de Zona/Gte Sr', '"Gte Sr" está en el nombre de la banda. Hoy no tiene a nadie.'],
+    ['GERENTE SR DE PROYECTOS TRANSVERSALES', 'Gerente de Zona/Gte Sr', '"Gte Sr" está en el nombre de la banda. Hoy no tiene a nadie.'],
+    ['GERENTE SR DE INGENIERIA Y PRODUCTIVIDAD DE CEDIS', 'Gerente de Zona/Gte Sr', '"Gte Sr" está en el nombre de la banda. Hoy no tiene a nadie.'],
+    ['GERENTE SR DE CENTRALIZACION CEDIS', 'Gerente de Zona/Gte Sr', '"Gte Sr" está en el nombre de la banda. Hoy no tiene a nadie.'],
+    ['GERENTE SR DE AUTOMATIZACION Y GESTION ALMACENES', 'Gerente de Zona/Gte Sr', '"Gte Sr" está en el nombre de la banda. Hoy no tiene a nadie.'],
+    ['GERENTE DE OPTIMIZACION DE TRANSPORTE Y CEDIS', 'Gerente de Zona/Gte Sr', 'Alcance por encima de un CEDIS. Mi lectura, por confirmar. Hoy no tiene a nadie.'],
+    ['GERENTE NACIONAL DE INGENIERIA CEDIS', 'Gerente Divisional o Director de Área', 'Alcance nacional. Mi lectura, por confirmar. Hoy no tiene a nadie.'],
+    ['GERENTE NACIONAL DE OPERACION CEDIS', 'Gerente Divisional o Director de Área', 'Alcance nacional. Mi lectura, por confirmar. Hoy no tiene a nadie.'],
   ],
 
-  // Los 12 centros del Centro de Impresión de Cobranza (PDF de lógicas, página 2).
-  // Los puestos 743 y 721 en estos centros quedan fuera de la especialización de
-  // conductores. La misma lista viene en la columna "Centros que no aplican" del
-  // PDT gerencial; se siembra aquí para poder validar que las dos coincidan.
-  ExcepcionImpresion: [
-    ['500306', '743, 721', ''], ['521902', '743, 721', ''], ['504704', '743, 721', ''],
-    ['501004', '743, 721', ''], ['503605', '743, 721', ''], ['509104', '743, 721', ''],
-    ['501105', '743, 721', ''], ['504307', '743, 721', ''], ['507703', '743, 721', ''],
-    ['509505', '743, 721', ''], ['504804', '743, 721', ''], ['517002', '743, 721', ''],
+  // Los 34 centros de costo que el PDF declara de CEDIS (páginas 3 y 4). Los 34
+  // aparecen en los datos y NO hay ninguno fuera de la lista: hoy no saca a
+  // nadie. Se siembra para que el día que aparezca un centro de costo que nadie
+  // declaró, el tablero lo diga en vez de contarlo en silencio.
+  CentrosCosto: [
+    ['006', 'DISTRIBUCION', ''],
+    ['010', 'AREA DE BOD MUEBLES', ''],
+    ['011', 'TALLER DE SERVICIOS', ''],
+    ['012', 'OFICINA CONTROL', ''],
+    ['013', 'TALLER AUTOMOTRIZ', ''],
+    ['014', 'BODEGA ROPA COLGADO', ''],
+    ['038', 'ZONA BODEGA MUEBLES', ''],
+    ['045', 'DISTRIBUCION FORANEA', ''],
+    ['058', 'BODEGA ROPA DOBLADO', ''],
+    ['059', 'BODEGA ROPA ZAPATERIA', ''],
+    ['060', 'BODEGA ROPA PICKING', ''],
+    ['061', 'ZONA BODEGA ROPA', ''],
+    ['062', 'BODEGA ROPA FRONTERA', ''],
+    ['064', 'IMPORTACION STAFF', ''],
+    ['070', 'BODEGAS PRODUCTIVAS AREAS', ''],
+    ['072', 'TRASLADO', ''],
+    ['073', 'OPERACION TRANSPORTE', ''],
+    ['075', 'EMBARQUES', ''],
+    ['079', 'BODEGA ROPA STAFF', ''],
+    ['088', 'TALLER CELULARES', ''],
+    ['092', 'ZONA CEDIS MUEBLES IMPORTACION', ''],
+    ['093', 'DESCARGA (IMPORTACION)', ''],
+    ['094', 'EMBARQUES (IMPORTACION)', ''],
+    ['098', 'SORTER', ''],
+    ['099', 'CALIDAD', ''],
+    ['100', 'HABILITADO', ''],
+    ['115', 'ENVIO A CLIENTES', ''],
+    ['152', 'ZONA DISTRIBUCION', ''],
+    ['153', 'ESTACION RAC', ''],
+    ['157', 'MEDIA MILLA ESTACION RAC', ''],
+    ['305', 'ACTIVADO DE MOTOS', ''],
+    ['441', 'SURTIDO IMPORTACION', ''],
+    ['443', 'OFICINA CONTROL IMPORTACION', ''],
+    ['458', 'TRASLADO IMPORTACION', ''],
   ],
+
+  // El PDT de operación trae Colaboradores_especificos VACÍO —solo encabezados—
+  // así que la especialización de conductores no le llegaría a ningún chofer. El
+  // PDF sí los nombra (página 3), y en las finalizaciones esos cuatro puestos
+  // suman 4,858 personas con la especialización asignada.
+  //
+  // Los cuatro puestos gerenciales de la misma especialización (1078, 41, 1049 y
+  // 1057) sí vienen en su archivo y no se repiten aquí.
+  //
+  // `centros` es la lista de "Centros que si aplican" del PDT gerencial: los
+  // nueve centros de costo donde la especialización aplica.
+  PuestosEspecificos: [
+    ['Colaborador', '44', 'CHOFER', '157, 153, 152, 094, 073, 064, 045, 013, 006',
+      'PDF de lógicas, página 3. Falta en Colaboradores_especificos del PDT de operación.'],
+    ['Colaborador', '1047', 'CHOFER DE DISTRIBUCION', '157, 153, 152, 094, 073, 064, 045, 013, 006',
+      'PDF de lógicas, página 3. 3,587 personas con la especialización en las finalizaciones.'],
+    ['Colaborador', '395', 'CHOFER DE MUDANZA TIPO E', '157, 153, 152, 094, 073, 064, 045, 013, 006',
+      'PDF de lógicas, página 3. 848 personas.'],
+    ['Colaborador', '45', 'CHOFER DE MUDANZA', '157, 153, 152, 094, 073, 064, 045, 013, 006',
+      'PDF de lógicas, página 3. 411 personas.'],
+  ],
+
+  // Vacía: la excepción del Centro de Impresión es de Cobranza. CEDIS restringe
+  // al revés, con la lista blanca de PuestosEspecificos.
+  ExcepcionImpresion: [],
 
   // Cómo se reconoce cada archivo dentro de la carpeta de datos crudos. Los
   // patrones son estilo glob y no distinguen mayúsculas, para que los sufijos

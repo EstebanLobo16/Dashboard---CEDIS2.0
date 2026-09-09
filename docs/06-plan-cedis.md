@@ -458,7 +458,7 @@ gerencial se lee como `"0-1"`, que es exactamente el fallo que esto previene.
 
 Correrlo antes y después de tocar `20_Fuentes.gs`, sin excepción.
 
-### Etapa 3 · Las semillas y los parámetros · 2 días
+### Etapa 3 · Las semillas y los parámetros · 2 días · **HECHA**
 
 Todo el contenido de `02_Semillas.gs` se reemplaza. Nada se inventa: cada renglón
 sale del PDF o de los archivos medidos.
@@ -470,24 +470,120 @@ sale del PDF o de los archivos medidos.
 | `AliasCursos` | **2**: `Introducción a la Seguridad y Salud Laboral CEDIS` → `…Laboral **en** CEDIS`, y `Socialización del Código de Ética` → `…**Para Líderes**` (heredado tal cual de Cobranza) |
 | `AliasPuestos` | `COORDINADOR DE TRANSPORTE` → `COORDINADOR` |
 | `Agrupaciones` | `Formación de Conductores CEDIS 2026` = sus 3 cursos (OLC5745710, OLC5753661, OLC5753667) |
-| `NivelesGerencial` | Los **57** puestos del plan gerencial contra los 6 niveles de la matriz. **Es el renglón de trabajo más largo y no se puede adivinar** |
+| `NivelesGerencial` | Los **57** puestos del plan gerencial contra los 6 niveles de la matriz. Ver abajo |
 | `CentrosPermitidos` | Los **34** centros de costo del PDF (reemplaza a `ExcepcionImpresion`) |
 | `PuestosEspecializacion` | Los **8** puestos de la especialización, con su ID (§3.5) |
 | `Fuentes` | Los 5 patrones de la etapa 2 |
 
-Parámetros que cambian respecto a Cobranza:
+#### `NivelesGerencial`: 57 renglones, pero solo uno mueve un número
+
+Era el trabajo más largo del proyecto y resultó el más acotado, porque **la
+matriz del PDT solo distingue tres bandas**, no seis:
+
+| Banda | Cursos | Qué pierde |
+|---|---:|---|
+| Jefes y Coordinadores · Gerente Operación | **22** | nada |
+| Gerente de Zona/Gte Sr | **18** | los 4 de seguridad operativa |
+| Gerente Regional · Gerente Divisional | **15** | además, "Conociendo los CEDIS" y los tres VALORES |
+| Director Corporativo o Director General | **0** | esa columna del PDT viene **sin marcas** |
+
+Clasificar un puesto mal **dentro** de una banda no cambia nada. Y de las 1,114
+personas con plan gerencial, **1,071 caen en las dos bandas que reciben los 22
+cursos**. Queda un solo renglón que mueve un número hoy:
+
+> **`GERENTE DE ZONA CEDIS` → Gerente de Zona/Gte Sr.** 43 personas que, en esa
+> banda, no reciben los 4 cursos de seguridad operativa. Es el empate literal con
+> el nombre de la banda, pero es el único que conviene confirmar.
+
+Los 23 puestos del plan que hoy no tienen a nadie llevan su nivel sembrado y
+marcado "por confirmar": el día que alguien los ocupe, ya está resuelto.
+
+⚠ **`Director Corporativo o Director General` no se usa.** Su columna en el PDT
+viene sin marcas, así que quien caiga ahí recibiría **cero cursos**. Ningún puesto
+de CEDIS está en ese nivel, y el catálogo lo dice para que nadie lo estrene por
+descuido.
+
+#### Dos catálogos nuevos
+
+`CentrosCosto` — los 34 del PDF. Los 34 aparecen en los datos y **no hay ninguno
+fuera**: hoy no saca a nadie. Se siembra para que el día que el área abra un
+centro de costo nuevo, el tablero lo diga en vez de contarlo en silencio.
+
+`PuestosEspecificos` — los 4 puestos de operación que el PDT trae vacíos (§3.5),
+con sus 9 centros de costo. Es el catálogo completando lo que al archivo le
+falta, sin tocar código. `construirPlan_()` los suma a los que trae el PDT.
+
+#### Parámetros
+
+Los que cambian respecto a Cobranza:
 
 ```
 FILTRAR_CATEGORIA_OPERACION = SI                 (el PDF lo pide)
 FAMILIA_CENTRO_COSTOS       = (vacío)            (CEDIS tiene 34, no una)
-FECHA_MINIMA_VALIDA         = 1950-01-01         (nuevo; decisión 4)
-SUBESTATUS_COMPLETADOS      = Exenta             (nuevo; decisión 3)
-PUESTOS_FUERA_DEL_PLAN      = EXCLUIR            (nuevo; decisión 5)
 BASE_ANTIGUEDAD             = PUESTO             (igual)
 DEDUPLICAR_FINALIZACIONES   = SI                 (igual, y aquí pesa más: 17.7%)
 ```
 
-Los tres parámetros nuevos tocan `30_Motor.gs`; ver la etapa 4.
+Los tres parámetros de las decisiones 3, 4 y 5 —`SUBESTATUS_COMPLETADOS`,
+`FECHA_MINIMA_VALIDA` y `PUESTOS_FUERA_DEL_PLAN`— **no se sembraron todavía**.
+Llegan en la etapa 4, junto con el código que los aplica: un parámetro sembrado
+que no hace nada es peor que uno que falta, porque quien lea la hoja va a creer
+que está funcionando.
+
+#### La primera corrida real
+
+Para correr el motor sin desplegar nada hacía falta un `fuentes.json`, y para
+CEDIS no existía cómo armarlo. Se escribió **`pipeline/armar_fuentes_cedis.py`**:
+hace en la máquina lo mismo que `20_Fuentes.gs` hace en Drive —concentra los tres
+CSV en un padrón y una tabla de finalizaciones, lee las cuatro pestañas de cada
+PDT, corrige el encabezado corrido— y emite el JSON que consume
+`correr_motor.js`.
+
+```bash
+python3 pipeline/armar_fuentes_cedis.py <carpeta-con-los-crudos> fuentes.json
+node --max-old-space-size=4096 pipeline/correr_motor.js fuentes.json
+```
+
+Con los archivos de agosto, **el motor completa en 3.1 segundos** y cuadra:
+
+```
+14,967 colaboradores · 63.9% de avance · conciliación: correcta
+286,247 asignados · 182,901 completados · 103,346 pendientes
+
+padronLeido 15,252 − categoría 128 − fechaPosterior 157 = 14,967 ✓
+origenFechaDePuesto: {padron: 15252, contratacion: 0, ninguno: 0}
+finalizacionesLeidas = finalizacionesUsadas = 425,811
+cursosEnFinalizaciones: 30 · cursosDelPlanSinFuente: 0 ✓
+regiones: 26, ninguna "Sin región" ✓
+centrosDeCostoFueraDelCatalogo: 0 ✓
+puestosEspecificosDelCatalogo: 4 · especialización a 5,167 personas ✓
+puestosConPlan: 104 · personasSinPlan: 85
+```
+
+Los criterios de aceptación 3, 5 y 6 (§10) quedan cumplidos. Los números todavía
+**van a cambiar con la etapa 4**, en tres direcciones conocidas: bajan 85 por
+`PUESTOS_FUERA_DEL_PLAN`, bajan 76 por `FECHA_MINIMA_VALIDA`, y sube el avance
+por `SUBESTATUS_COMPLETADOS` (las 7,224 finalizaciones "Exenta").
+
+#### Dos defectos que solo aparecieron al correrlo
+
+Ninguno de los dos se veía leyendo el código.
+
+**1. El mismo curso se publicaba dos veces.** El PDT de operación escribe
+"Introducción a la Seguridad y Salud Laboral CEDIS" y el gerencial "…Laboral
+**en** CEDIS". El alias hacía que los dos encontraran las mismas finalizaciones,
+pero `cursoClave` salía del nombre **del plan**, así que "Avance por curso"
+enseñaba el mismo renglón dos veces con números distintos (13,748 y 1,108).
+Ahora la clave sale del nombre **resuelto**; el nombre visible sigue siendo el
+del plan, y el motor avisa cuáles se unieron y con qué nombre quedaron.
+
+**2. El centro publicaba el centro de costo de la primera persona.** El centro de
+CEDIS es el departamento, y **76 de los 745 departamentos abarcan más de un centro
+de costo** — "07 EMBARQUES TCMC 03" junta 075, 094 y 441. `sumar_()` se quedaba
+con los atributos de la primera persona leída, así que ese centro se publicaba
+como si fuera el 094. Es el tipo de dato que nadie vuelve a cuestionar una vez
+publicado. Ahora dice **"varios (3)"**, y `centrosConAtributosMezclados` cuenta
+cuántos son (78, contando dos que además abarcan más de una región).
 
 ### Etapa 4 · El motor · 1 día
 
@@ -619,16 +715,16 @@ Y tres que son de CEDIS:
 | 0 · Preparar el repo | 0.5 | — |
 | 1 · Identidad del reporte | ~~0.5~~ **hecha** | 0 |
 | 2 · Ingesta | ~~3~~ **hecha** | 1, 6 |
-| 3 · Semillas y parámetros | 2 | 1 |
+| 3 · Semillas y parámetros | ~~2~~ **hecha** | 1 |
 | 4 · Motor | 1 | 2, 3 |
 | 5 · Tablero | 1 | 4 |
 | 6 · Aligerado | 1 | 0 |
 | 7 · Ensayo | 2 | todas |
-| | **7.5 días restantes** | |
+| | **5.5 días restantes** | |
 
-Las etapas 3 y 6 son independientes entre sí y se pueden hacer en paralelo. **Ya
-no hay nada esperando insumos del área:** las cinco decisiones están tomadas y P2
-llegó.
+**Ya no hay nada esperando insumos del área:** las cinco decisiones están tomadas
+y P2 llegó. Lo que queda son las reglas (etapa 4), la interfaz (5), el aligerado
+(6) y el ensayo dentro de Apps Script (7).
 
 ---
 

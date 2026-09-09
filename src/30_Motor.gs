@@ -93,7 +93,17 @@ function construirPlan_(planes, opciones, diagnostico) {
     const especificos = normalizarCursos_(plan.cursosEspecificos, familia, 'Específico',
       opciones, diagnostico);
 
-    (plan.puestosEspecificos || []).forEach((puesto) => {
+    // El PDT de operación de CEDIS trae Colaboradores_especificos vacío, así que
+    // la especialización de conductores no le llegaría a ningún chofer. El
+    // catálogo completa lo que al archivo le falta, sin tocar código. Ver
+    // PuestosEspecificos en 02_Semillas.gs.
+    const delCatalogo = opciones.puestosEspecificosExtra(familia);
+    if (delCatalogo.length) {
+      diagnostico.conteos.puestosEspecificosDelCatalogo =
+        (diagnostico.conteos.puestosEspecificosDelCatalogo || 0) + delCatalogo.length;
+    }
+
+    (plan.puestosEspecificos || []).concat(delCatalogo).forEach((puesto) => {
       const puestoClave = textoClave_(puesto.puesto);
       if (!puestoClave) return;
 
@@ -165,10 +175,22 @@ function normalizarCursos_(cursos, familia, tipo, opciones, diagnostico) {
       return;
     }
 
+    // La clave sale del nombre RESUELTO, no del que trae el plan.
+    //
+    // Los dos PDT de CEDIS escriben distinto el mismo curso: operación dice
+    // "Introducción a la Seguridad y Salud Laboral CEDIS" y gerencial
+    // "...Laboral EN CEDIS". El alias hace que los dos encuentren las mismas
+    // finalizaciones, pero si la clave saliera del nombre del plan se
+    // publicarían como DOS cursos, y "Avance por curso" enseñaría el mismo
+    // renglón dos veces con números distintos.
+    //
+    // El nombre visible sí es el del plan —es como lo escribió el área—, y gana
+    // el primer plan que lo declare.
+    const buscado = regla.nombre || nombre;
     salida.push({
       curso: nombre,
-      cursoClave: claveCurso_(nombre),
-      cursoBuscado: regla.nombre || nombre,
+      cursoClave: claveCurso_(buscado),
+      cursoBuscado: buscado,
       sinFuente: regla.accion === 'PENDIENTE',
       iniciativa: String(fila.tipo || '').trim(),
       agrupacion: opciones.agrupacionDe(nombre),
@@ -264,6 +286,7 @@ function sinRepetir_(lista) {
 function indexarPlan_(reglas, diagnostico) {
   const porPuesto = {};
   const vistos = {};
+  const nombresPorClave = {};
   let duplicados = 0;
 
   reglas.forEach((regla) => {
@@ -274,8 +297,23 @@ function indexarPlan_(reglas, diagnostico) {
     if (vistos[llave]) { duplicados += 1; return; }
     vistos[llave] = true;
 
+    if (!nombresPorClave[regla.cursoClave]) nombresPorClave[regla.cursoClave] = {};
+    nombresPorClave[regla.cursoClave][regla.curso] = true;
+
     if (!porPuesto[regla.puestoClave]) porPuesto[regla.puestoClave] = [];
     porPuesto[regla.puestoClave].push(regla);
+  });
+
+  // Dos nombres distintos que caen en la misma clave son el mismo curso escrito
+  // de dos formas, y se publican como uno. Se dice cuál se ve, porque el que se
+  // ve es el del primer plan que lo declaró y no siempre es el que uno espera.
+  Object.keys(nombresPorClave).forEach((clave) => {
+    const nombres = Object.keys(nombresPorClave[clave]);
+    if (nombres.length < 2) return;
+    diagnostico.avisos.push(
+      `Los cursos ${nombres.map((n) => `"${n}"`).join(' y ')} son el mismo (los une un alias) y ` +
+      `se publican como uno solo, con el nombre "${nombres[0]}".`
+    );
   });
 
   Object.keys(porPuesto).forEach((puesto) => {
@@ -395,6 +433,8 @@ function resolverPadron_(fuentes, plan, opciones, diagnostico) {
     );
   }
 
+  revisarCentrosDeCosto_(personas, opciones, diagnostico);
+
   const filtradas = filtrarPadron_(personas, opciones, diagnostico);
   diagnostico.conteos.padronLeido = (fuentes.padron || []).length;
   diagnostico.conteos.padronPublicado = filtradas.length;
@@ -402,6 +442,37 @@ function resolverPadron_(fuentes, plan, opciones, diagnostico) {
   return filtradas;
 }
 
+
+/**
+ * Avisa de los centros de costo que aparecen en el padrón y que nadie declaró.
+ *
+ * Los 34 del PDF cubren el 100% de los datos de agosto, así que hoy esto no dice
+ * nada. Existe para el día que el área abra un centro de costo nuevo: sin el
+ * aviso, su gente entraría al tablero sin que nadie hubiera revisado si le toca
+ * el plan de CEDIS. No excluye a nadie — solo lo dice.
+ */
+function revisarCentrosDeCosto_(personas, opciones, diagnostico) {
+  const declarados = opciones.centrosDeCostoDelArea || [];
+  if (!declarados.length) return;
+
+  const fuera = {};
+  personas.forEach((persona) => {
+    if (!persona.centroCosto) return;
+    if (declarados.indexOf(persona.centroCosto) !== -1) return;
+    fuera[persona.nomenclatura || persona.centroCosto] =
+      (fuera[persona.nomenclatura || persona.centroCosto] || 0) + 1;
+  });
+
+  const nombres = Object.keys(fuera);
+  diagnostico.conteos.centrosDeCostoFueraDelCatalogo = nombres.length;
+  if (!nombres.length) return;
+
+  diagnostico.avisos.push(
+    `${nombres.length} centro(s) de costo del padrón no están en el catálogo CentrosCosto: ` +
+    `${nombres.map((n) => `${n} (${fuera[n]})`).join(', ')}. Entran al tablero igual. Si son del ` +
+    `área, agrégalos al catálogo; si no, hay que revisar de dónde salió el archivo.`
+  );
+}
 
 /**
  * Descarta a quien no puede evaluarse, y avisa de cada motivo. Las exclusiones
@@ -691,7 +762,20 @@ function sumar_(mapa, llave, atributos, asignados, completados, persona) {
   if (!llave) return;
   let fila = mapa[llave];
   if (!fila) {
-    fila = mapa[llave] = Object.assign({ asignados: 0, completados: 0, personas: {} }, atributos);
+    fila = mapa[llave] = Object.assign(
+      { asignados: 0, completados: 0, personas: {}, variantes: {} }, atributos);
+  } else {
+    // Un mismo centro puede juntar gente con atributos distintos: 76 de los 745
+    // departamentos de CEDIS abarcan más de un centro de costo. Publicar el
+    // valor de la primera persona como si fuera el de todas es mentir en voz
+    // baja, así que se anota que hubo varios.
+    Object.keys(atributos).forEach((campo) => {
+      const valor = atributos[campo];
+      if (valor === '' || valor === undefined || valor === fila[campo]) return;
+      if (!fila.variantes[campo]) fila.variantes[campo] = {};
+      fila.variantes[campo][fila[campo]] = true;
+      fila.variantes[campo][valor] = true;
+    });
   }
   fila.asignados += asignados;
   fila.completados += completados;
@@ -716,12 +800,16 @@ function armarTablas_(datos, totales, opciones, diagnostico) {
       avance_(f.completados, f.asignados)];
   });
 
+  let centrosMezclados = 0;
   const centro = Object.keys(datos.porCentro).sort().map((llave) => {
     const f = datos.porCentro[llave];
-    return [reporte, periodo, corte, f.region, f.centro, f.nomenclatura, f.tipoCentro,
+    if (f.variantes.nomenclatura || f.variantes.region) centrosMezclados += 1;
+    return [reporte, periodo, corte, unoODiverso_(f, 'region'), f.centro,
+      unoODiverso_(f, 'nomenclatura'), unoODiverso_(f, 'tipoCentro'),
       Object.keys(f.personas).length, f.asignados, f.completados, f.asignados - f.completados,
       avance_(f.completados, f.asignados)];
   });
+  diagnostico.conteos.centrosConAtributosMezclados = centrosMezclados;
 
   const curso = Object.keys(datos.porCurso).sort().map((llave) => {
     const f = datos.porCurso[llave];
@@ -773,6 +861,21 @@ function armarTablas_(datos, totales, opciones, diagnostico) {
     },
     diagnostico,
   };
+}
+
+/**
+ * El valor de un atributo del centro, o "varios (n)" cuando su gente no coincide.
+ *
+ * El centro de CEDIS es el departamento —el CEDIS físico— y no es 1 a 1 con el
+ * centro de costo: "07 EMBARQUES TCMC 03" junta gente de 075, 094 y 441. Decir
+ * que ese centro "es" el 094 solo porque esa fue la primera persona leída es
+ * falso, y es el tipo de dato que nadie vuelve a cuestionar una vez publicado.
+ */
+function unoODiverso_(fila, campo) {
+  const variantes = fila.variantes && fila.variantes[campo];
+  if (!variantes) return fila[campo];
+  const cuantas = Object.keys(variantes).length;
+  return cuantas > 1 ? `varios (${cuantas})` : fila[campo];
 }
 
 /** Un número que no sea finito se publica vacío, no como "Infinity". */
