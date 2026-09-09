@@ -22,7 +22,7 @@ Apps Script. Universidad Corporativa · Coppel.
 | `src/` | El proyecto de Apps Script: almacén, motor, tablero |
 | `pipeline/` | Lo que corre fuera de Apps Script: el cuaderno de Colab y las herramientas de prueba |
 | `docs/` | La propuesta, el contrato de datos y los manuales |
-| `base_cedis/` | Los archivos con que el área alimenta el proceso de **CEDIS** |
+| `Archivos base/` | Los archivos con que el área alimenta el proceso de **CEDIS** |
 
 ## Documentos
 

@@ -10,17 +10,22 @@ lógicas de las tres áreas, y **los seis archivos reales de CEDIS**, medidos un
 por uno. Todos los números que aparecen aquí salieron de esos archivos, no de una
 estimación.
 
+> **Revisión 2** — incorpora `CEDIS P2.csv`, que llegó después de la primera
+> lectura, y las cuatro decisiones del área ya confirmadas (§5). Con P2, el
+> hueco de 14 cursos sin fuente **queda cerrado**.
+
 ---
 
-## 1. Lo primero: los archivos de CEDIS no estaban en el repo
+## 1. Cuidado con renombrar el .zip desde la web
 
-`base_cedis/Archivos_alimentacion` era un archivo de texto de **2 bytes**. El .zip
-original de 12.6 MB se subió bien en `512210b` y se destruyó al renombrarlo desde
-la interfaz web de GitHub en `ac22297`.
+`Archivos base/Archivos_alimentacion.zip` se ha subido dos veces al repo, y las
+dos veces se destruyó al renombrarlo desde la interfaz web de GitHub: quedó un
+archivo de texto de **2 bytes** en lugar de 12.6 MB (`ac22297`) y de 15.9 MB
+(`715c24b`).
 
-Ya está recuperado del historial y guardado como
-`base_cedis/Archivos_alimentacion.zip`, con su `README.md`. **Sin ese rescate no
-había con qué trabajar.**
+Las dos veces se recuperó del commit de subida —`512210b` y `b8725fc`— que
+todavía lo tenía íntegro. **Si hay que moverlo otra vez, con `git mv` desde la
+consola.** Desde la web, no.
 
 ---
 
@@ -31,28 +36,28 @@ había con qué trabajar.**
 | Archivo | Filas | Personas | Cursos |
 |---|---:|---:|---:|
 | `CEDIS P1.csv` (96 MB) | 257,918 | 15,124 | 12 |
-| `CEDIS P3.csv` (6.4 MB) | 16,644 | 5,181 | 3 |
-| `CEDIS P3(1).csv` | — | — | — |
+| `CEDIS P2.csv` (88 MB) | 243,053 | 15,252 | 15 |
+| `CEDIS P3.csv` (6 MB) | 16,644 | 5,181 | 3 |
 | `PDT-operacion-adaptado.xlsx` | 4 pestañas | 46 puestos | 19 |
 | `PDT-gerencial-adaptado.xlsx` | 4 pestañas | 57 puestos | 22 |
 | `detalle_colaborador.xlsx` | 123,097 | toda la empresa | — |
 
-`CEDIS P3(1).csv` es **idéntico byte a byte** a `CEDIS P3.csv`. Si los dos caen en
-la carpeta de datos crudos, cada finalización de la especialización se cuenta dos
-veces. `DEDUPLICAR_FINALIZACIONES = SI` lo neutraliza, pero no hay razón para
-subir los dos.
+Los tres CSV **no se traslapan entre sí**: cada uno trae cursos distintos, 30 en
+total. No son cortes parciales del mismo universo, como en Cobranza.
 
-P1 y P3 **no se traslapan**: 0 pares persona×curso en común. No son cortes
-parciales del mismo universo como en Cobranza — son cursos distintos. P1 trae los
-generales, P3 la especialización.
+Pero **sí se repiten por dentro**: entre los tres hay 517,615 filas para 425,811
+pares persona×curso, o sea **91,804 repeticiones (17.7%)**. La mayoría están
+dentro de P1 (76,430). `DEDUPLICAR_FINALIZACIONES = SI` no es una preferencia:
+sin él el avance se calcula sobre un denominador inflado en una sexta parte.
 
-### El padrón: 15,128 personas, con el 100% de sus fechas
+### El padrón: 15,252 personas, con el 100% de sus fechas
 
 | | Cobranza | CEDIS |
 |---|---|---|
 | Padrón | Planta por Posiciones | **no existe** |
-| Personas | 12,278 → 11,094 publicadas | 15,128 |
-| Sin fecha de puesto | 1,139 (9.3%) — se excluyen | **0** |
+| Personas leídas | 12,278 | 15,252 |
+| Sin fecha de puesto | 1,139 (9.3%) | **0** |
+| Publicadas | 11,094 | **15,018** (−76 centinela, −158 futura) |
 
 Los CSV de CEDIS traen `Fecha Contratación` y `Fecha Asignación Puesto` en
 **todas** sus filas, y además `Región RRHH`, `Centro Costos`, `Área`,
@@ -60,26 +65,36 @@ Los CSV de CEDIS traen `Fecha Contratación` y `Fecha Asignación Puesto` en
 ya es, él mismo, el censo del área.
 
 Eso hace desaparecer el problema que más costó en Cobranza. A cambio abre uno
-nuevo, que es la decisión de fondo de este proyecto (§5, decisión 1).
+nuevo, que es la decisión de fondo de este proyecto (§5, decisión 1) —**ya
+confirmada por el área**.
 
-Del padrón, el Detalle Colaborador encuentra a **14,919 de 15,128 (98.6%)** por
-número de persona, y de esos las fechas de asignación de puesto coinciden en
-**14,765 de 14,919 (99.0%)**. El Detalle sirve de contraste, no de fuente
-principal.
+Del padrón, el Detalle Colaborador encuentra al **98.6%** por número de persona,
+y de esos las fechas de asignación de puesto coinciden en el **99.0%**. El Detalle
+sirve de contraste, no de fuente principal.
 
-Con corte al 2026-08-31: mediana de **473 días en el puesto**, y
+Con corte al 2026-08-31: mediana de **471 días en el puesto**, **76 fechas
+centinela** (`1 ene 1900`) y **158 fechas posteriores al corte**.
 
-| Umbral | Personas que lo alcanzan |
-|---|---:|
-| 0 meses | 14,895 |
-| 1 mes | 13,666 |
-| 3 meses | 12,391 |
-| 4 meses | 11,918 |
-| 12 meses | 8,777 |
+### Los 30 cursos del plan cruzan, con dos alias
 
-Hay **76 fechas centinela** (`1 ene 1900`) y **157 fechas posteriores al corte**.
-Las primeras hoy pasarían como una antigüedad de 46,000 días — el motor las
-aceptaría sin decir nada. Hay que tratarlas (§6, etapa 3).
+Con los tres CSV, solo **3 de los 30 cursos** del plan no encuentran fuente, y los
+tres se explican sin tocar los datos:
+
+| Curso del plan | Qué pasa | Remedio |
+|---|---|---|
+| `Formación de Conductores CEDIS 2026` | **No es un curso**: es el nombre de la especialización que forman los otros tres | `Agrupaciones` |
+| `Introducción a la Seguridad y Salud Laboral CEDIS` | En las finalizaciones y en el plan gerencial se llama `…Laboral **en** CEDIS` | `AliasCursos` |
+| `Socialización del Código de Ética` | En las finalizaciones se llama `…de Ética **Para Líderes**` | `AliasCursos` |
+
+El tercero es, **palabra por palabra, el mismo alias que ya existe en Cobranza**.
+Se hereda tal cual.
+
+Con esos tres renglones de catálogo, **`cursosDelPlanSinFuente = 0`**.
+
+Sobran cuatro cursos que están en las finalizaciones y en ningún plan
+—`Visionarios temporada 1` y `2`, `Conviértete en Colaborador Digital`, y
+`Socialización del Código de Ética Para Líderes` una vez resuelto el alias—. No
+estorban: el motor solo busca lo que el plan pide.
 
 ### Las 26 regiones cuadran
 
@@ -99,26 +114,25 @@ y **no hay ninguno fuera de la lista**. La lista blanca del PDF es confirmatoria
 no saca a nadie. Se siembra igual, para que el día que aparezca uno nuevo el
 tablero avise en vez de contarlo en silencio.
 
-### Los puestos: 74 de 88 tienen plan
+### Los puestos: 76 de 120 tienen plan
 
-De los 88 puestos del padrón, **74 están en algún plan** (15,017 personas) y 14 no
-(**111 personas, 0.7%**):
+De los 120 puestos del padrón, **76 están en algún plan** (15,026 personas) y 44
+no (**226 personas, 1.5%**).
 
-```
-COORDINADOR DE TRANSPORTE 26 · GERENTE DE MOTOS 23 · AUXILIAR DE TRASLADO DE
-IMPORTACION 19 · SURTIDOR DE CROSS DE IMPORTACION 17 · AUXILIAR GENERAL 9 ·
-AUXILIAR DE PISO 4 · AUXILIAR ADMINISTRATIVO 4 · JEFE DE MODULO LINEA EXTENDIDA 2
-· JEFE DE SURTIDO DE IMPORTACION 2 · JEFE DE MODULO TIENDA 1 · JEFE DE RESGUARDO 1
-· JEFE DE RACK ALTO 1 · JEFE DE TRASLADO DE IMPORTACION 1 · VIGILANTE 1
-```
+P2 trajo 32 puestos nuevos, y casi todos son de una misma familia: **Importación y
+Aduanas** — `ANALISTA DE LOGISTICA IMPORTACION`, `ASESOR DE SERVICIOS ADUANALES`,
+`GERENTE DE DESPACHO ADUANAL`, `DOCUMENTADOR DE IMPORTACION`… Están dentro de los
+centros de costo de CEDIS (064 Importación STAFF, 441, 443, 458, 093, 094) pero
+ningún PDT los nombra. Es la pregunta abierta de §5.
 
-`COORDINADOR DE TRANSPORTE` no es un puesto huérfano cualquiera: el plan gerencial
-lo llama **`COORDINADOR`** a secas, y sus 26 personas **sí tienen la
-especialización** en P3. Es un alias de puesto, y hoy no existe el catálogo para
-resolverlo (§6, etapa 2).
+`COORDINADOR DE TRANSPORTE` no es un huérfano cualquiera: el plan gerencial lo
+llama **`COORDINADOR`** a secas, y sus 26 personas **sí tienen la especialización**
+en P3. Es un alias de puesto, y hoy no existe el catálogo para resolverlo (§6,
+etapa 2).
 
-En el otro sentido, 29 puestos del plan no tienen a nadie en los datos. Es normal
-—corporativos, puestos vacantes— y no rompe nada.
+Nadie de estos 44 mueve el avance —aportan 0 asignados y 0 completados—, pero sí
+aparecen en el tablero con "0 de 0 cursos", que es lo primero que va a preguntar
+quien filtre por su centro.
 
 ---
 
@@ -203,71 +217,77 @@ Es el mismo hallazgo 4 de Cobranza —una restricción que el archivo no dice y 
 tablero tiene que saber— y se resuelve igual: sembrando el dato en el catálogo,
 donde el área lo puede corregir sin tocar código.
 
-### 3.6 El filtro de categoría Operación ya viene aplicado
+### 3.6 El filtro de categoría Operación ya viene casi aplicado
 
 El PDF lo pide explícitamente para CEDIS. En los datos, `Tipo Posición` vale
-`OPERACION` en el 100% de P1 y en 16,631 de 16,644 filas de P3 (13 en `STAFF`).
+`OPERACION` en el 100% de P1 y en 241,107 de 243,053 filas de P2 (1,946 en
+`STAFF`), más 13 filas de P3.
 
-Se enciende `FILTRAR_CATEGORIA_OPERACION = SI` de todas formas: es la regla escrita,
-cuesta nada, y el día que el área exporte sin filtrar, el tablero no se mueve.
+Se enciende `FILTRAR_CATEGORIA_OPERACION = SI`: es la regla escrita, cuesta nada, y
+el día que el área exporte sin filtrar, el tablero no se mueve.
 
-### 3.7 "Finalización omitida" cuenta como completado
+### 3.7 "Exenta" y "Finalización omitida" cuentan como completadas
 
 `¿Lo Completó?` no es un reflejo de `Sub Estatus Aprendizaje`:
 
 | `¿Lo Completó?` | `Sub Estatus` | Filas |
 |---|---|---:|
-| **Si** | Completado | 171,303 |
-| **Si** | **Finalización omitida** | **33,776** |
-| No | Exenta | 6,242 |
-| No | el resto (No iniciado, En curso, Retirado…) | 63,241 |
+| **Si** | Completado | 260,094 |
+| **Si** | **Finalización omitida** | **42,315** |
+| No | **Exenta** | **7,224** |
+| No | el resto (No iniciado, En curso, Retirado, "-"…) | 207,982 |
 
-**33,776 finalizaciones (16.5% de todas las "Si") son "Finalización omitida"**, y
-**6,242 "Exenta" cuentan como NO completado**. Las dos lecturas son defendibles y
-mueven el avance varios puntos. Es la decisión 3 de §5.
+El área confirmó que **las dos cuentan como completadas** (§5, decisión 3). Las
+`Finalización omitida` ya venían del lado correcto porque `¿Lo Completó?` dice
+`Si`; **las 7,224 `Exenta` no**, y por eso esta decisión sí cuesta código: el motor
+tiene que dejar de mirar una sola columna.
 
----
-
-## 4. El bloqueo: falta `CEDIS P2.csv`
-
-De los 26 cursos distintos del plan, **solo 12 aparecen en las finalizaciones**.
-Los 14 restantes no tienen ni una sola fila:
-
-```
-Control Interno: protegiendo juntos a Grupo Coppel   Política Anticorrupción de Grupo Coppel
-NOM-006-STPS-2023 Almacenamiento y manejo…           Manejo, Transporte y Almacenamiento de Sustancias Químicas
-Cuidados en el Manejo de Mercancía                   Conociendo los Centros de Distribución Coppel
-Competencias Coppel                                  Agilidad para Grupo Coppel
-Cumplimiento: por qué y para qué                     Programa de Integridad Empresarial
-Socialización del Código de Ética                    Construcción de un entorno laboral ético
-VALORES I · VALORES II · Valores III
-```
-
-Los archivos entregados son **P1 y P3**. Falta P2, y su contenido es justo el
-tamaño del hueco. Sin él, con `CURSO_SIN_FUENTE = PENDIENTE` esos 14 cursos entran
-al denominador y **nadie los completa nunca**: el avance publicado saldría
-artificialmente bajo, no por error del motor sino por una fuente incompleta.
-
-También sobran tres cursos que están en las finalizaciones y en ningún plan
-—`Visionarios temporada 1`, `Visionarios temporada 2`, `Conviértete en Colaborador
-Digital`—. No estorban: el motor solo busca lo que el plan pide.
-
-**El ensayo no puede cerrar sin P2.** Todo lo demás del plan sí avanza sin él.
+Sobre los pares deduplicados: con la regla nueva, **229,760 de 425,811 (54.0%)**
+quedan como completados.
 
 ---
 
-## 5. Las cuatro decisiones que necesito que confirmes
+## 4. El bloqueo de la revisión 1 · resuelto
 
-Sin estas cuatro respuestas se puede construir igual —dejo sembrada una
-recomendación en cada una y cambiar de opinión es cambiar un renglón del
-catálogo—, pero el número publicado depende de ellas.
+En la primera lectura solo estaban P1 y P3, y **14 de los 30 cursos del plan no
+tenían ni una finalización**: el avance habría salido artificialmente bajo, no por
+error del motor sino por una fuente incompleta.
 
-| # | Decisión | Recomendación | Qué cambia |
+`CEDIS P2.csv` llegó con exactamente esos 14 cursos (más
+`Socialización del Código de Ética Para Líderes`, que es el alias del quinceavo).
+**Ya no hay bloqueo.** El ensayo de la etapa 7 puede correr.
+
+---
+
+## 5. Las decisiones del área
+
+Las cuatro quedaron confirmadas. Se anotan aquí porque el número publicado depende
+de ellas y porque cambiar de opinión debe ser cambiar un renglón del catálogo, no
+volver a discutir.
+
+| # | Decisión | Confirmado | Qué implica |
 |---|---|---|---|
-| **1** | **¿Quién es el padrón de CEDIS?** | `PADRON = FINALIZACIONES`: las 15,128 personas del reporte de asignaciones | La alternativa (`DETALLE` filtrado por puesto) arrastra gente de otras áreas con el mismo nombre de puesto —`ASISTENTE`, `SECRETARIA`, `COORDINADOR`—: es el hallazgo 5 de Cobranza otra vez. Y el Detalle no trae centro de costo ni departamento, así que el tablero perdería su eje de centro |
-| **2** | **¿Falta `CEDIS P2.csv`?** | Sí, falta | Sin él, 14 de 26 cursos salen en 0% para siempre (§4) |
-| **3** | **¿"Finalización omitida" cuenta como completado? ¿Y "Exenta"?** | Respetar `¿Lo Completó?` tal cual: omitida **sí**, exenta **no** | Es lo que ya hace el motor. Si el área lee distinto, son 33,776 y 6,242 finalizaciones que cambian de lado |
-| **4** | **Los 76 `1 ene 1900` y las 157 fechas futuras** | Tratar ambas como "sin fecha" y aplicarles `SIN_FECHA_CONTRATACION` | Hoy el centinela pasaría como 46,000 días de antigüedad y recibiría el plan completo, sin aviso |
+| **1** | ¿Quién es el padrón de CEDIS? | **Las 15,252 personas del reporte de asignaciones** | `PADRON = FINALIZACIONES`, un valor nuevo. La alternativa (`DETALLE` filtrado por puesto) arrastra gente de otras áreas con el mismo nombre de puesto —`ASISTENTE`, `SECRETARIA`, `COORDINADOR`—: es el hallazgo 5 de Cobranza otra vez |
+| **2** | ¿Falta `CEDIS P2.csv`? | **Sí — y ya llegó** | Los 30 cursos del plan cruzan (§2) |
+| **3** | ¿"Finalización omitida" y "Exenta" cuentan como completadas? | **Las dos, sí** | `esAfirmativo_()` deja de bastar: hay que leer `Sub Estatus Aprendizaje`. 7,224 finalizaciones cambian de lado (§6, etapa 4) |
+| **4** | Los 76 `1 ene 1900` y las 158 fechas futuras | **Tratarlas como "sin fecha"** | Parámetro nuevo `FECHA_MINIMA_VALIDA`. Sin él el centinela pasa como 46,000 días de antigüedad y recibe el plan completo, sin aviso |
+
+### Lo único que queda abierto
+
+**Los 44 puestos sin plan (226 personas, 1.5%)**, casi todos de Importación y
+Aduanas (§2). No bloquean nada —aportan 0 asignados y 0 completados, así que no
+mueven el avance— pero van a aparecer en el tablero con "0 de 0 cursos".
+
+Tres salidas, y la recomendación es la primera:
+
+1. **Publicarlos y decirlo.** El diagnóstico ya cuenta `personasSinPlan`; basta con
+   que el tablero lo muestre. Es honesto y es información: si a Importación le
+   toca plan y no lo tiene, esto lo hace visible.
+2. Sacarlos del padrón por centro de costo. Pierde visibilidad y hay que mantener
+   una lista.
+3. Pedirle al área el PDT de Importación, si existe.
+
+No hace falta responder para empezar: afecta la etapa 5, no la 2 ni la 3.
 
 ---
 
@@ -278,11 +298,10 @@ tienen trabajo de verdad.
 
 ### Etapa 0 · Preparar el repo · ½ día
 
-- [x] Rescatar `Archivos_alimentacion.zip` del historial *(hecho)*
-- [x] `base_cedis/README.md` con el inventario y la advertencia del renombrado *(hecho)*
+- [x] Rescatar `Archivos_alimentacion.zip` del historial, las dos veces *(hecho)*
+- [x] `Archivos base/README.md` con el inventario y la advertencia del renombrado *(hecho)*
 - [x] Este documento *(hecho)*
-- [ ] Descomprimir a `base_cedis/crudos/` (ignorado por git) para los ensayos
-- [ ] `.gitignore` para `base_cedis/crudos/`
+- [ ] Descomprimir a `Archivos base/crudos/` (ya ignorado por git) para los ensayos
 
 ### Etapa 1 · La identidad del reporte · ½ día
 
@@ -316,11 +335,12 @@ CED, y `estado()` las reporta.
 ### Etapa 2 · La ingesta · 3 días
 
 Es la etapa con más trabajo, porque las fuentes de CEDIS no se parecen a las de
-Cobranza. `20_Fuentes.gs` pasa de cinco fuentes a **tres**:
+Cobranza. `20_Fuentes.gs` pasa de cinco fuentes a **cuatro**:
 
 | Fuente | Patrón | Papel |
 |---|---|---|
-| `finalizaciones` | `cedis*p*.csv` | **Padrón + finalizaciones + fechas.** Todo |
+| `padron` | `cedis?padron*.csv` | **El censo.** Una fila por persona (etapa 6) |
+| `finalizaciones` | `cedis?finalizaciones*.csv` | Persona × curso × estatus |
 | `pdt_operacion` | `*operaci?n*.xlsx` | Plan Colaborador |
 | `pdt_gerencial` | `*gerencial*.xlsx` | Plan Gerencial |
 | `detalle_colaborador` | `*detalle?colaborador*.xlsx` | **Opcional.** Contraste de fechas |
@@ -331,12 +351,12 @@ Planta). Eso simplifica la ingesta y **quita la fuente más lenta de convertir**
 
 Cinco piezas nuevas:
 
-1. **`padronDesdeFinalizaciones_()`** — una persona por `Número Persona`, con
-   nombre, región, centro de costo, área, departamento, puesto, tipo de posición y
-   las dos fechas. Sustituye a `resolverPadron_()` sobre la Planta. La cascada de
-   identificadores y el puente persona↔colaborador **se conservan tal cual**: en
-   los datos de CEDIS `persona ≠ colaborador` en 101,578 de 274,562 filas, así que
-   el puente sigue siendo necesario.
+1. **`padronDesdeFinalizaciones_()`** — lee el archivo de padrón: nombre, región,
+   centro de costo, área, departamento, puesto, tipo de posición y las dos fechas.
+   Sustituye a `resolverPadron_()` sobre la Planta. La cascada de identificadores y
+   el puente persona↔colaborador **se conservan tal cual**: en los datos de CEDIS
+   `persona ≠ colaborador` en 202,707 de 517,615 filas, así que el puente sigue
+   siendo necesario.
 
 2. **`detectarCorrimiento_()`** — antes de mapear encabezados, comprobar si la fila
    de datos está corrida respecto a la fila 1 (§3.3). La prueba es barata: si la
@@ -369,36 +389,37 @@ sale del PDF o de los archivos medidos.
 |---|---|
 | `Regiones` | Las **26**, en el orden del PDF |
 | `MapaRegiones` | Los **3** renglones de §2 |
-| `AliasCursos` | `Introducción a la Seguridad y Salud Laboral CEDIS` → `…Laboral **en** CEDIS`. El plan de operación y el gerencial escriben distinto el mismo curso, y la normalización no alcanza |
+| `AliasCursos` | **2**: `Introducción a la Seguridad y Salud Laboral CEDIS` → `…Laboral **en** CEDIS`, y `Socialización del Código de Ética` → `…**Para Líderes**` (heredado tal cual de Cobranza) |
 | `AliasPuestos` | `COORDINADOR DE TRANSPORTE` → `COORDINADOR` |
 | `Agrupaciones` | `Formación de Conductores CEDIS 2026` = sus 3 cursos (OLC5745710, OLC5753661, OLC5753667) |
 | `NivelesGerencial` | Los **57** puestos del plan gerencial contra los 6 niveles de la matriz. **Es el renglón de trabajo más largo y no se puede adivinar** |
 | `CentrosPermitidos` | Los **34** centros de costo del PDF (reemplaza a `ExcepcionImpresion`) |
 | `PuestosEspecializacion` | Los **8** puestos de la especialización, con su ID (§3.5) |
-| `Fuentes` | Los 4 patrones de la etapa 2 |
+| `Fuentes` | Los 5 patrones de la etapa 2 |
 
 Parámetros que cambian respecto a Cobranza:
 
 ```
-PADRON                     = FINALIZACIONES     (nuevo valor; decisión 1)
+PADRON                      = FINALIZACIONES     (valor nuevo; decisión 1)
 FILTRAR_CATEGORIA_OPERACION = SI                 (el PDF lo pide)
-FAMILIA_CENTRO_COSTOS      = (vacío)             (CEDIS tiene 34, no una)
-FECHA_MINIMA_VALIDA        = 1950-01-01          (nuevo; decisión 4)
-BASE_ANTIGUEDAD            = PUESTO              (igual)
-DEDUPLICAR_FINALIZACIONES  = SI                  (igual, y aquí urge: P3(1))
+FAMILIA_CENTRO_COSTOS       = (vacío)            (CEDIS tiene 34, no una)
+FECHA_MINIMA_VALIDA         = 1950-01-01         (nuevo; decisión 4)
+SUBESTATUS_COMPLETADOS      = Exenta             (nuevo; decisión 3)
+BASE_ANTIGUEDAD             = PUESTO             (igual)
+DEDUPLICAR_FINALIZACIONES   = SI                 (igual, y aquí pesa más: 17.7%)
 ```
 
-`FECHA_MINIMA_VALIDA` es nuevo y toca `filtrarPadron_()` en `30_Motor.gs`: una
-fecha anterior se trata como ausente, igual que hoy se trata una posterior al corte.
+Los dos parámetros nuevos tocan `30_Motor.gs`; ver la etapa 4.
 
 ### Etapa 4 · El motor · 1 día
 
-El motor es genérico y casi no se toca. Cuatro cambios, todos chicos:
+El motor es genérico y casi no se toca. Cinco cambios, todos chicos:
 
 | Dónde | Qué |
 |---|---|
 | `indiceCentros_()` | Se elimina. El centro ya viene resuelto en cada fila del padrón |
-| `filtrarPadron_()` | `FECHA_MINIMA_VALIDA`; `soloOperacion` compara contra `Tipo Posición` |
+| `filtrarPadron_()` | `FECHA_MINIMA_VALIDA` (decisión 4); `soloOperacion` compara contra `Tipo Posición` |
+| `indiceFinalizaciones_()` | **Decisión 3.** Una finalización cuenta si `¿Lo Completó?` dice `Si` **o** si su `Sub Estatus` está en `SUBESTATUS_COMPLETADOS`. Hoy solo mira la primera columna |
 | `normalizarCursos_()` | Sin cambios — la agrupación y los alias ya son catálogo |
 | `acumular_()` / `armarTablas_()` | `tipoCobranza` → `tipoCentro` |
 
@@ -413,53 +434,70 @@ Estructura y CSS **sin cambios**. Solo textos y etiquetas:
 - «Centro» sigue diciendo Centro, pero muestra el departamento
 - La columna nueva `tipo_centro` en la vista de centros
 - 26 regiones en el ranking en vez de 15 — el panel ya pagina con `regionsMore`
+- **Los 44 puestos sin plan** (§5): mostrar `personasSinPlan` en el encabezado, para
+  que "0 de 0 cursos" tenga explicación
 - `reportesDisponibles_()` en `90_WebApp.gs`: aquí es donde CEDIS y Cobranza se
   enlazan, con la misma mecánica de salto entre despliegues del tablero de Tienda
 
 **Verificación:** `node pipeline/montar_tablero.js` arma el HTML abrible con datos
 reales de CEDIS, sin desplegar.
 
-### Etapa 6 · El aligerado y el rendimiento · 1 día
+### Etapa 6 · El aligerado · 1 día
 
-`CEDIS P1.csv` pesa **96 MB**. El límite de conversión de Drive es 100 MB: pasa,
-pero por 4 MB. `celda_aligerar_csv.py` deja de ser opcional y **pasa a ser
-obligatoria**.
+Los tres CSV suman **200 MB**. `CEDIS P1.csv` pesa 96 MB y `CEDIS P2.csv` 88 MB,
+contra un límite de conversión de Drive de 100 MB: pasan, pero por poco.
+`celda_aligerar_csv.py` deja de ser opcional y **pasa a ser obligatoria**.
 
-En Cobranza guardaba 7 columnas. CEDIS necesita **13**, porque el padrón sale del
-propio CSV: `Número Persona`, `Número Colaborador`, `Nombre Colaborador`,
-`Región RRHH`, `Centro Costos`, `Área`, `Departamento`, `Puesto`,
-`Tipo Posición`, `Fecha Contratación`, `Fecha Asignación Puesto`, `Nombre Curso`,
-`¿Lo Completó?`.
+Y cambia de forma. En Cobranza emitía **un** archivo de 7 columnas. Aquí eso no
+alcanza: como el padrón sale del propio CSV, harían falta 14 columnas, y el
+resultado son **90.3 MB en un solo archivo** — otra vez pegado al límite, y encima
+repitiendo el nombre, el departamento y las dos fechas de cada persona en cada una
+de sus 28 filas.
 
-Medido sobre los archivos reales:
+La salida es partirlo en dos, que es como el motor los consume de todas formas:
 
-| | Filas | Peso |
-|---|---:|---:|
-| P1 + P3 originales | 274,562 | 103.4 MB |
-| **13 columnas, sin repetir persona+curso** | **197,031** | **40.0 MB** |
+| | Filas | Columnas | Peso |
+|---|---:|---:|---:|
+| Los 3 originales | 517,615 | 25 | **199.7 MB** |
+| Un solo archivo aligerado | 425,811 | 14 | 90.3 MB |
+| **`cedis_padron.csv`** | **15,252** | **11** | **2.4 MB** |
+| **`cedis_finalizaciones.csv`** | **425,811** | **5** | **30.5 MB** |
+| | | | **32.9 MB** |
 
-El script tiene que **abortar** si alguna de las 13 columnas queda vacía — es
-exactamente el error que costó horas en Cobranza, cuando el recorte tiró
-`Fecha Contratación` y 1,281 personas se cayeron del corte sin explicación.
+**Seis veces más chico que un solo archivo, y ninguno cerca del límite.**
 
-Sobre el tiempo: un corte de Cobranza tarda 15–25 min contra un límite de 1,800 s.
-CEDIS tiene **más personas (15,128 vs 11,094) pero menos archivos (3 vs 5) y menos
-cursos por persona**. La conversión de 40 MB debería ser más barata que la de los
-cinco archivos de Cobranza. **Hay que medirlo, no suponerlo:** `ensayarCorte()` en
-frío es la prueba, y si se acerca a 1,800 s la palanca ya está identificada en el
-README —`Utilities.parseCsv()` sobre el blob, sin convertir a hoja.
+`cedis_padron.csv` — `Número Persona`, `Número Colaborador`, `Nombre Colaborador`,
+`Región RRHH`, `Centro Costos`, `Área`, `Departamento`, `Puesto`, `Tipo Posición`,
+`Fecha Contratación`, `Fecha Asignación Puesto`.
+
+`cedis_finalizaciones.csv` — `Número Persona`, `Número Colaborador`,
+`Nombre Curso`, `¿Lo Completó?`, `Sub Estatus Aprendizaje`.
+
+El script tiene que **abortar** si alguna columna queda vacía — es exactamente el
+error que costó horas en Cobranza, cuando el recorte tiró `Fecha Contratación` y
+1,281 personas se cayeron del corte sin explicación. Y tiene que verificar que el
+padrón salga con las 15,252 personas y ninguna sin fecha.
 
 ### Etapa 7 · El ensayo · 2 días
 
 El equivalente del ensayo de agosto de Cobranza, que es lo que dio confianza para
-publicar. **Requiere `CEDIS P2.csv`.**
+publicar.
 
-- [ ] `revisarFuentes()` reconoce los 3 archivos
+- [ ] `revisarFuentes()` reconoce los cuatro archivos
 - [ ] `ensayarCorte('2026-08')` completa y cuadra
-- [ ] Los conteos de diagnóstico se revisan uno por uno contra §2 de este documento
-- [ ] `cursosDelPlanSinFuente = 0` — **es el termómetro de si P2 llegó**
-- [ ] `procesarCorte()` en frío, cronometrado
+- [ ] Los conteos de diagnóstico se revisan uno por uno contra §2 de este documento:
+      **padrón 15,252 → 15,018 publicados**, 76 centinela, 158 futura,
+      `cursosDelPlanSinFuente = 0`, `personasSinPlan = 226`
+- [ ] La especialización le llega a las **5,181 personas** que la tienen en P3
+- [ ] `procesarCorte()` en frío, **cronometrado** contra el límite de 1,800 s
 - [ ] Los números del ensayo se anotan en el README como referencia
+
+Sobre el tiempo: un corte de Cobranza tarda 15–25 min. CEDIS tiene más personas
+(15,252 vs 11,094) y más pares persona×curso (425,811 vs 237,251), pero **menos
+archivos que convertir** (4 vs 5) y, después del aligerado, **menos megas**
+(32.9 vs 16.9 — el doble, no diez veces). **Hay que medirlo, no suponerlo.** Si se
+acerca a 1,800 s, la palanca ya está identificada en el README:
+`Utilities.parseCsv()` sobre el blob, sin convertir a hoja.
 
 ---
 
@@ -475,12 +513,13 @@ Heredado de Cobranza. Ya costó horas allá; aquí va resuelto de origen:
 - **El menú no existe sin `automatizar()`**
 - **La vigencia se cuenta desde la asignación del puesto**, no desde la
   contratación. Para CEDIS aplica igual: los datos traen las dos fechas y la
-  mediana en puesto es de 473 días
+  mediana en puesto es de 471 días
 
-Y dos que son de CEDIS:
+Y tres que son de CEDIS:
 
 - **El encabezado corrido del PDT gerencial no truena: miente** (§3.3)
-- **`CEDIS P3(1).csv` es una copia exacta.** No subir las dos
+- **Las repeticiones están dentro de cada CSV, no entre ellos.** 17.7% de las filas
+- **Renombrar el .zip desde la web lo destruye.** Ya pasó dos veces (§1)
 
 ---
 
@@ -488,10 +527,10 @@ Y dos que son de CEDIS:
 
 | Riesgo | Probabilidad | Impacto | Mitigación |
 |---|---|---|---|
-| P2 nunca llega | media | **alto** — el avance sale bajo y falso | `CURSO_SIN_FUENTE = EXCLUIR` como paliativo, y decirlo en el tablero |
 | El PDT gerencial cambia de forma el mes que viene | alta | medio | Detectar el corrimiento, no corregir el archivo a mano |
 | `NivelesGerencial` mal armado | media | alto — sobreasigna cursos | Validar contra los datos: un puesto sin nivel recibe todo y el motor ya lo avisa |
-| El corte se pasa de 1,800 s | baja | alto | Medir en la etapa 6; la palanca de `parseCsv` está identificada |
+| El corte se pasa de 1,800 s | media | alto | Medir en la etapa 7; la palanca de `parseCsv` está identificada |
+| Los CSV crecen y rozan los 100 MB | media | medio | El aligerado en dos archivos deja margen de 3× |
 | Dos repos divergen | **alta** | medio | Portar a mano cada arreglo, y anotarlo en los dos README |
 
 ---
@@ -502,16 +541,17 @@ Y dos que son de CEDIS:
 |---|---:|---|
 | 0 · Preparar el repo | 0.5 | — |
 | 1 · Identidad del reporte | 0.5 | 0 |
-| 2 · Ingesta | 3 | 1 · **decisión 1** |
-| 3 · Semillas y parámetros | 2 | 1 · **decisiones 3 y 4** |
+| 2 · Ingesta | 3 | 1, 6 |
+| 3 · Semillas y parámetros | 2 | 1 |
 | 4 · Motor | 1 | 2, 3 |
 | 5 · Tablero | 1 | 4 |
-| 6 · Aligerado y rendimiento | 1 | 2 |
-| 7 · Ensayo | 2 | todas · **`CEDIS P2.csv`** |
+| 6 · Aligerado | 1 | 0 |
+| 7 · Ensayo | 2 | todas |
 | | **11 días** | |
 
-Las etapas 2 y 3 son independientes entre sí y se pueden hacer en paralelo. Las
-etapas 0 a 6 avanzan **sin P2**; solo la 7 lo necesita.
+Las etapas 2, 3 y 6 son independientes entre sí y se pueden hacer en paralelo. **Ya
+no hay nada esperando insumos del área:** las cuatro decisiones están tomadas y P2
+llegó.
 
 ---
 
@@ -520,13 +560,13 @@ etapas 0 a 6 avanzan **sin P2**; solo la 7 lo necesita.
 El tablero de CEDIS está terminado cuando:
 
 1. `instalar()` levanta el almacén completo con nombres CED y siembra los catálogos
-2. `revisarFuentes()` reconoce los tres archivos de CEDIS
+2. `revisarFuentes()` reconoce los cuatro archivos de CEDIS
 3. `ensayarCorte('2026-08')` completa, cuadra el control algebraico y reporta
    `cursosDelPlanSinFuente = 0`
-4. El padrón publicado es de **~15,000 colaboradores**, y las exclusiones están
-   explicadas una por una en el diagnóstico
+4. El padrón publicado es de **15,018 colaboradores** de 15,252 leídos, y las 234
+   exclusiones están explicadas una por una en el diagnóstico
 5. Las **26 regiones** aparecen en el ranking, ninguna como `Sin región`
-6. La especialización de conductores le llega a las **~5,181 personas** que la
+6. La especialización de conductores le llega a las **5,181 personas** que la
    tienen en P3, no a 0
 7. `procesarCorte()` publica en menos de 1,800 s
 8. El tablero muestra los **mismos indicadores** que el de Cobranza: avance total,
