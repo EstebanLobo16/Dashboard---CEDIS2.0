@@ -77,7 +77,7 @@ function indiceCentros_(centros, opciones, diagnostico) {
       region: region || SIN_REGION,
       regionCruda: cruda,
       nomenclatura: String(fila.nomenclatura || '').trim(),
-      tipoCobranza: String(fila.tipoCobranza || '').trim(),
+      tipoCentro: String(fila.tipoCentro || '').trim(),
     };
   });
 
@@ -180,8 +180,8 @@ function normalizarCursos_(cursos, familia, tipo, opciones, diagnostico) {
     const nombre = String(fila.curso || '').trim();
     if (!nombre) return;
 
-    // Hallazgo 3 (bis): "Formación de Conductores Cobranza 2026" no es un curso,
-    // es el nombre del paquete de los otros tres, que ya vienen listados aparte.
+    // Hallazgo 3 (bis): "Formación de Conductores CEDIS 2026" no es un curso, es
+    // el nombre del paquete de los otros tres, que ya vienen listados aparte.
     // Contarlo infla el denominador con algo que nadie puede completar.
     if (agrupaciones.indexOf(textoClave_(nombre)) !== -1) {
       diagnostico.conteos.cursosAgrupacionOmitidos =
@@ -405,7 +405,7 @@ function resolverPadron_(fuentes, catalogoCentros, plan, opciones, diagnostico) 
       centro: centro || SIN_CENTRO,
       region: info.region || SIN_REGION,
       nomenclatura: info.nomenclatura || '',
-      tipoCobranza: info.tipoCobranza || '',
+      tipoCentro: info.tipoCentro || '',
       fechaContratacion: fechaContratacion ? aTextoFecha_(fechaContratacion) : '',
       fechaPuesto: fechaPuesto ? aTextoFecha_(fechaPuesto) : '',
       diasLaborados: dias,
@@ -507,8 +507,9 @@ function filtrarPadron_(personas, opciones, diagnostico) {
   const excluidosSinFecha = [];
 
   const salida = personas.filter((persona) => {
-    // Hallazgo 6 (bis): el PDF pide el filtro para CEDIS y no dice nada de
-    // Cobranza; queda apagado por omisión.
+    // Hallazgo 6 (bis): el PDF lo pide textualmente para CEDIS —«en categoría de
+    // asignación solamente se contempla el rubro de Operación»—, así que aquí va
+    // encendido. Para Cobranza no lo dice y allá queda apagado.
     if (opciones.soloOperacion && textoClave_(persona.categoria).indexOf('OPERACION') !== 0) {
       porCategoria += 1;
       return false;
@@ -571,7 +572,8 @@ function filtrarPadron_(personas, opciones, diagnostico) {
       `de fecha de puesto probablemente cambió de nombre en el archivo de origen; no basta con que ` +
       `el Detalle esté "al día", también hay que encontrar a la persona en él (por número de ` +
       `persona, por el puente de las finalizaciones, o por nombre único). Corre "Listar personas ` +
-      `sin fecha (diagnóstico)" desde el menú Cobranza de Catálogos para ver quiénes son, uno por uno.`
+      `sin fecha (diagnóstico)" desde el menú ${CONFIG.nombreReporte} de Catálogos para ver ` +
+      `quiénes son, uno por uno.`
     );
   }
   return salida;
@@ -711,7 +713,7 @@ function acumular_(personas, plan, finalizaciones, opciones, diagnostico) {
 
       sumar_(porCentro, persona.centro, {
         region: persona.region, centro: persona.centro,
-        nomenclatura: persona.nomenclatura, tipoCobranza: persona.tipoCobranza,
+        nomenclatura: persona.nomenclatura, tipoCentro: persona.tipoCentro,
       }, veces, hechos, persona.colaborador);
 
       sumar_(porRegion, persona.region, { region: persona.region }, veces, hechos, persona.colaborador);
@@ -804,7 +806,7 @@ function armarTablas_(datos, totales, opciones, diagnostico) {
 
   const centro = Object.keys(datos.porCentro).sort().map((llave) => {
     const f = datos.porCentro[llave];
-    return [reporte, periodo, corte, f.region, f.centro, f.nomenclatura, f.tipoCobranza,
+    return [reporte, periodo, corte, f.region, f.centro, f.nomenclatura, f.tipoCentro,
       Object.keys(f.personas).length, f.asignados, f.completados, f.asignados - f.completados,
       avance_(f.completados, f.asignados)];
   });

@@ -8,7 +8,7 @@
   <body>
     <div id="loading" class="loading-screen">
       <div class="loader-mark"><span></span><span></span><span></span></div>
-      <p>Preparando el reporte de Cobranza…</p>
+      <p>Preparando el reporte de CEDIS…</p>
     </div>
 
     <div id="app" class="site-page is-hidden">
@@ -45,7 +45,7 @@
           <section id="emptyView" class="empty-report-view is-hidden">
             <span class="empty-report-icon" aria-hidden="true">↥</span>
             <small>REPORTE LISTO PARA CONFIGURAR</small>
-            <h3 id="emptyReportName">Cobranza</h3>
+            <h3 id="emptyReportName">CEDIS</h3>
             <p>Todavía no hay información publicada. Procesa el primer corte desde los archivos de Drive, o carga un paquete generado desde el cuaderno.</p>
             <button id="emptyProcessButton" class="primary-button empty-upload-button is-hidden" type="button">Procesar corte</button>
             <button id="emptyUpdateDataButton" class="secondary-button empty-upload-button" type="button">Cargar paquete</button>
@@ -68,7 +68,7 @@
 
           <div id="summaryView">
             <section class="report-lead">
-              <h3 id="summaryReportName">Cobranza</h3>
+              <h3 id="summaryReportName">CEDIS</h3>
               <p>Concentrado mensual de avance, asignaciones y pendientes. La vigencia de cada curso se cuenta desde la fecha de asignación del puesto.</p>
               <small id="cutoffText"></small>
             </section>
@@ -98,7 +98,7 @@
           </div>
 
           <section id="peopleView" class="people-view is-hidden">
-            <section class="report-lead people-lead"><h3 id="peopleReportName">Cobranza</h3><p>Listado de colaboradores con uno o más cursos pendientes según los filtros seleccionados.</p><small id="peopleCutoffText"></small></section>
+            <section class="report-lead people-lead"><h3 id="peopleReportName">CEDIS</h3><p>Listado de colaboradores con uno o más cursos pendientes según los filtros seleccionados.</p><small id="peopleCutoffText"></small></section>
             <div class="people-summary"><strong id="employeeCount"></strong><small>La búsqueda utiliza únicamente los filtros seleccionados.</small></div>
             <div class="table-wrap"><table id="employeesTable"></table></div>
             <div class="pagination"><button id="previousPage">Anterior</button><span id="pageStatus"></span><button id="nextPage">Siguiente</button></div>
@@ -115,12 +115,12 @@
       <div class="import-backdrop" data-close-import></div>
       <section class="import-card">
         <header>
-          <div><small>COBRANZA</small><h2 id="importTitle">Actualizar reporte</h2></div>
+          <div><small>CEDIS</small><h2 id="importTitle">Actualizar reporte</h2></div>
           <button id="closeImportButton" type="button" aria-label="Cerrar">×</button>
         </header>
         <div id="importSelectView" class="import-select-view">
           <button id="choosePackageButton" class="drop-zone" type="button">
-            <strong>Seleccionar paquete de Cobranza</strong>
+            <strong>Seleccionar paquete de CEDIS</strong>
             <small>Archivo .json generado desde el cuaderno</small>
           </button>
         </div>
@@ -140,7 +140,7 @@
       <div class="import-backdrop" data-close-process></div>
       <section class="import-card">
         <header>
-          <div><small>COBRANZA</small><h2 id="processTitle">Procesar corte</h2></div>
+          <div><small>CEDIS</small><h2 id="processTitle">Procesar corte</h2></div>
           <button id="closeProcessButton" type="button" aria-label="Cerrar">×</button>
         </header>
         <div class="import-preview">

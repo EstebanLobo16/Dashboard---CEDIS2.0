@@ -327,8 +327,8 @@ function avisarPorCorreo_(asunto, cuerpo) {
   try {
     const destinatarios = administradores_();
     if (!destinatarios.length) return;
-    MailApp.sendEmail(destinatarios.join(','), `[Tablero Cobranza] ${asunto}`,
-      `${cuerpo}\n\n—\nTablero de Cobranza · Universidad Corporativa`);
+    MailApp.sendEmail(destinatarios.join(','), `[Tablero ${CONFIG.nombreReporte}] ${asunto}`,
+      `${cuerpo}\n\n—\nTablero de ${CONFIG.nombreReporte} · Universidad Corporativa`);
   } catch (error) {
     console.log(`No se pudo avisar por correo: ${error.message}`);
   }

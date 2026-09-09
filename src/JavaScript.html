@@ -1,6 +1,6 @@
 <script>
   /**
-   * Interfaz del tablero de Cobranza.
+   * Interfaz del tablero de CEDIS.
    *
    * Mismo comportamiento que el tablero de Tienda: los filtros con búsqueda
    * interna, los esqueletos de carga, el buscador con sugerencias, la paginación
@@ -598,6 +598,11 @@
     document.getElementById('closeImportButton').disabled = false;
   }
 
+  /** El nombre del área, tal como lo mandó el servidor. Nunca escrito duro. */
+  function reportName() {
+    return (state.data && state.data.reportName) || 'este reporte';
+  }
+
   function choosePackage() {
     if (!state.importBusy) document.getElementById('packageFileInput').click();
   }
@@ -619,8 +624,10 @@
       if (file.size > 40 * 1024 * 1024) throw new Error('El paquete supera el límite de 40 MB.');
       const contents = await readFileText(file);
       const data = JSON.parse(contents);
-      if (data.formato !== 'cobranza-report-package' || Number(data.version) !== 1) {
-        throw new Error('Este archivo no es un paquete compatible de Cobranza.');
+      const esperado = (state.data && state.data.packageFormat) || '';
+      const version = (state.data && state.data.packageVersion) || 1;
+      if (data.formato !== esperado || Number(data.version) !== Number(version)) {
+        throw new Error(`Este archivo no es un paquete compatible de ${reportName()}.`);
       }
       const summaryRows = data.hojas && data.hojas.Resumen && data.hojas.Resumen.filas;
       if (!Array.isArray(summaryRows) || !summaryRows.length) {
@@ -630,7 +637,7 @@
       state.importContents = contents;
       document.getElementById('packageFileName').textContent = file.name;
       document.getElementById('packageMetrics').innerHTML = `
-        <article><small>Reporte</small><strong>Cobranza</strong></article>
+        <article><small>Reporte</small><strong>${escapeHtml(reportName())}</strong></article>
         <article><small>Periodo</small><strong>${escapeHtml(data.periodo || '—')}</strong></article>
         <article><small>Fecha de corte</small><strong>${escapeHtml(data.fechaCorte || '—')}</strong></article>
         <article><small>Colaboradores</small><strong>${integer(summary[3])}</strong></article>
@@ -661,7 +668,7 @@
       setTimeout(() => {
         state.importBusy = false;
         document.getElementById('importModal').classList.add('is-hidden');
-        reloadDashboard(`Cobranza ${result.periodo} se publicó correctamente.`);
+        reloadDashboard(`${reportName()} ${result.periodo} se publicó correctamente.`);
         resetImport();
       }, 500);
     }).withFailureHandler((error) => {

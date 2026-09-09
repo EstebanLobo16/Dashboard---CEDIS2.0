@@ -35,9 +35,9 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 
-FORMATO_PAQUETE = 'cobranza-report-package'
+FORMATO_PAQUETE = 'cedis-report-package'
 VERSION_PAQUETE = 1
-REPORTE = 'cobranza'
+REPORTE = 'cedis'
 
 PERIODO = FECHA_CORTE[:7]
 
@@ -108,7 +108,7 @@ COLUMNAS = {
         'colaboradores', 'cursos_asignados', 'cursos_completados', 'cursos_pendientes', 'avance',
     ],
     'Centro': [
-        'reporte', 'periodo', 'fecha_corte', 'region', 'centro', 'nomenclatura', 'tipo_cobranza',
+        'reporte', 'periodo', 'fecha_corte', 'region', 'centro', 'nomenclatura', 'tipo_centro',
         'colaboradores', 'cursos_asignados', 'cursos_completados', 'cursos_pendientes', 'avance',
     ],
     'Curso': [
@@ -142,13 +142,13 @@ SIN_CENTRO = 'Pendiente'
 
 # --- Catálogo de centros: nomenclatura y tipo de cobranza ---------------------
 
-_nomenclatura, _tipo_cobranza = {}, {}
+_nomenclatura, _tipo_centro = {}, {}
 if 'centros_tipocentros' in dir():
     _cat = centros_tipocentros.copy()
     _cat['_centro'] = _cat['# Centro'].astype(str).str.extract(r'(\d+)')[0]
     for _, _f in _cat.dropna(subset=['_centro']).drop_duplicates('_centro').iterrows():
         _nomenclatura[_f['_centro']] = texto(_f.get('NOMENCLATURA'))
-        _tipo_cobranza[_f['_centro']] = texto(_f.get('TIPO COBRANZA'))
+        _tipo_centro[_f['_centro']] = texto(_f.get('TIPO COBRANZA'))
 
 
 def _centro_texto(valor):
@@ -207,7 +207,7 @@ for (region, centro), g in r.groupby(['_region', '_centro'], dropna=False):
     asignados, completados = int(g['total'].sum()), int(g['completados'].sum())
     filas_centro.append(fila([
         REPORTE, PERIODO, FECHA_CORTE, region, centro,
-        _nomenclatura.get(centro, ''), _tipo_cobranza.get(centro, ''),
+        _nomenclatura.get(centro, ''), _tipo_centro.get(centro, ''),
         int(g['numero_persona'].nunique()),
         asignados, completados, asignados - completados, avance(completados, asignados),
     ]))
@@ -393,7 +393,7 @@ if not _conciliacion:
     )
 
 os.makedirs(RUTA_RESULTADOS, exist_ok=True)
-ruta_paquete = os.path.join(RUTA_RESULTADOS, f'cobranza-{PERIODO}.json')
+ruta_paquete = os.path.join(RUTA_RESULTADOS, f'{REPORTE}-{PERIODO}.json')
 with open(ruta_paquete, 'w', encoding='utf-8') as f:
     json.dump(paquete, f, ensure_ascii=False, allow_nan=False)
 

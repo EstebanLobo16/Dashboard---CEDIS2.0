@@ -4,7 +4,7 @@
  * Misma estructura y mismos indicadores que el tablero de Tienda. Tres
  * diferencias, todas de fondo y ninguna de forma:
  *
- *   · Tienda pasa a ser Centro, y la región sale del catálogo de Cobranza.
+ *   · Tienda pasa a ser Centro, y la región sale de los catálogos del área.
  *   · La gráfica "Avance mensual" por fin lee el histórico real. En el tablero
  *     de Tienda dibuja una sola barra porque no hay de dónde sacar las otras.
  *   · Hay un botón "Procesar corte" que corre el motor sobre los archivos de
@@ -50,6 +50,10 @@ function getDashboardData(peticion) {
     report: CONFIG.reporte,
     reportName: CONFIG.nombreReporte,
     availableReports: reportesDisponibles_(),
+    // El validador del paquete vive en el navegador; sin esto tendría que
+    // llevar el nombre del formato escrito duro y se desincroniza de CONFIG.
+    packageFormat: CONFIG.paquete.formato,
+    packageVersion: CONFIG.paquete.version,
     generatedAt: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss"),
     canUpdate: puedePublicar_(),
   };
@@ -127,8 +131,9 @@ function periodosDisponibles_(vigente) {
 
 function reportesDisponibles_() {
   const actual = ScriptApp.getService().getUrl() || '';
-  // Cobranza es el primero; CEDIS y CATd entran aquí cuando existan, con la
-  // misma mecánica de salto entre despliegues del tablero de Tienda.
+  // Este reporte es el primero; los demás (Cobranza, CATd) entran aquí cuando
+  // existan, con la misma mecánica de salto entre despliegues del tablero de
+  // Tienda. Se enlazan por URL de despliegue, no por código compartido.
   return [{ key: CONFIG.reporte, name: CONFIG.nombreReporte, url: actual, current: true }];
 }
 

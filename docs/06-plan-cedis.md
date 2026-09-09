@@ -261,7 +261,7 @@ error del motor sino por una fuente incompleta.
 
 ## 5. Las decisiones del área
 
-Las cuatro quedaron confirmadas. Se anotan aquí porque el número publicado depende
+Las cinco quedaron confirmadas. Se anotan aquí porque el número publicado depende
 de ellas y porque cambiar de opinión debe ser cambiar un renglón del catálogo, no
 volver a discutir.
 
@@ -272,22 +272,33 @@ volver a discutir.
 | **3** | ¿"Finalización omitida" y "Exenta" cuentan como completadas? | **Las dos, sí** | `esAfirmativo_()` deja de bastar: hay que leer `Sub Estatus Aprendizaje`. 7,224 finalizaciones cambian de lado (§6, etapa 4) |
 | **4** | Los 76 `1 ene 1900` y las 158 fechas futuras | **Tratarlas como "sin fecha"** | Parámetro nuevo `FECHA_MINIMA_VALIDA`. Sin él el centinela pasa como 46,000 días de antigüedad y recibe el plan completo, sin aviso |
 
-### Lo único que queda abierto
+### Decisión 5 · el universo son los puestos del PDT
 
-**Los 44 puestos sin plan (226 personas, 1.5%)**, casi todos de Importación y
-Aduanas (§2). No bloquean nada —aportan 0 asignados y 0 completados, así que no
-mueven el avance— pero van a aparecer en el tablero con "0 de 0 cursos".
+Sobre los 44 puestos que ningún PDT nombra —casi todos de Importación y Aduanas
+(§2)—, el área resolvió: **basarse solamente en los puestos del PDT.**
 
-Tres salidas, y la recomendación es la primera:
+Quien ocupa un puesto que no está en ninguno de los dos planes **no entra al
+tablero**. No se le inventa un plan, no se le busca uno en otra parte, y no
+aparece con "0 de 0 cursos".
 
-1. **Publicarlos y decirlo.** El diagnóstico ya cuenta `personasSinPlan`; basta con
-   que el tablero lo muestre. Es honesto y es información: si a Importación le
-   toca plan y no lo tiene, esto lo hace visible.
-2. Sacarlos del padrón por centro de costo. Pierde visibilidad y hay que mantener
-   una lista.
-3. Pedirle al área el PDT de Importación, si existe.
+Es un parámetro, no código: `PUESTOS_FUERA_DEL_PLAN = EXCLUIR`. El día que
+Importación tenga su propio PDT, se agrega la fuente y esas personas entran
+solas. Y como toda exclusión en este tablero, **queda contada y con nombre** en el
+diagnóstico: `personasSinPlan` dice cuántas fueron y `puestosSinPlan` con qué
+puestos, para que "faltan 200 personas" tenga siempre una respuesta.
 
-No hace falta responder para empezar: afecta la etapa 5, no la 2 ni la 3.
+El padrón publicado queda así:
+
+```
+  leídos                        15,252
+  − puesto fuera del PDT           200
+  − fecha centinela (<1950)         76
+  − fecha posterior al corte       157
+  = PUBLICADOS                  14,819
+```
+
+Son 200 y no 226 porque `COORDINADOR DE TRANSPORTE` sí entra: el plan gerencial lo
+llama `COORDINADOR` y el alias de puesto lo resuelve (§6, etapa 2).
 
 ---
 
@@ -303,7 +314,7 @@ tienen trabajo de verdad.
 - [x] Este documento *(hecho)*
 - [ ] Descomprimir a `Archivos base/crudos/` (ya ignorado por git) para los ensayos
 
-### Etapa 1 · La identidad del reporte · ½ día
+### Etapa 1 · La identidad del reporte · ½ día · **HECHA**
 
 Mecánico y de bajo riesgo. `00_Config.gs` completo:
 
@@ -329,8 +340,36 @@ Y tres cosas que no están en `00_Config.gs` y hay que buscar a mano:
 `Centro`. Hay que tocarla también en `30_Motor.gs` (4 sitios) y en
 `pipeline/celda_paquete_cobranza.py`.
 
-**Verificación:** `instalar()` crea las tres hojas y las dos carpetas con nombres
-CED, y `estado()` las reporta.
+Se hizo un poco más de lo escrito, y a propósito. En vez de cambiar «Cobranza»
+por «CEDIS» en cada archivo, **la identidad se movió a `CONFIG`**: el prefijo de
+la caché, el nombre del menú, el asunto de los correos, el nombre de los detalles
+archivados y el formato del paquete salen ahora de `CONFIG.reporte` y
+`CONFIG.nombreReporte`. El navegador recibe el formato del servidor
+(`packageFormat`) en vez de llevarlo escrito.
+
+Cuesta lo mismo hoy y **la tercera réplica —CATd— es un solo archivo**. También
+evita el riesgo real de estos dos repos: un arreglo portado a medias que deja una
+cadena vieja mintiendo en una pantalla.
+
+`01_Esquema.gs` cambia en **una** columna: `tipo_cobranza` → `tipo_centro`, en
+`Centro`. Se tocó también en `30_Motor.gs` (4 sitios) y en
+`pipeline/celda_paquete_cobranza.py`.
+
+De paso, `pipeline/validar_paquete.js` apuntaba con ruta absoluta al repo de
+Cobranza (`/home/user/Dashboard---cobranza-2.0/src`): en este repo no corría. Ya
+apunta a `../src`.
+
+**Verificación:** `node pipeline/probar_identidad.js` — **17 revisiones, todas
+pasan.** Corre sin Apps Script: revisa `CONFIG` y el esquema, prueba que el
+validador acepte el paquete de CEDIS y rechace el de Cobranza, y **peina el código
+buscando el nombre del área escrito duro** en cualquier cadena (se exceptúan
+`00_Config.gs`, `02_Semillas.gs` y el marcado de `Index.html`, que initialize()
+sobrescribe). Se verificó que la revisión falla si se reintroduce una cadena vieja.
+
+Falta lo que necesita Apps Script: correr `instalar()` para que cree las tres
+hojas y las dos carpetas con nombres CED. **No hacerlo todavía** — `02_Semillas.gs`
+sigue trayendo los catálogos de Cobranza y sembraría las reglas equivocadas. Va
+después de la etapa 3.
 
 ### Etapa 2 · La ingesta · 3 días
 
@@ -405,11 +444,12 @@ FILTRAR_CATEGORIA_OPERACION = SI                 (el PDF lo pide)
 FAMILIA_CENTRO_COSTOS       = (vacío)            (CEDIS tiene 34, no una)
 FECHA_MINIMA_VALIDA         = 1950-01-01         (nuevo; decisión 4)
 SUBESTATUS_COMPLETADOS      = Exenta             (nuevo; decisión 3)
+PUESTOS_FUERA_DEL_PLAN      = EXCLUIR            (nuevo; decisión 5)
 BASE_ANTIGUEDAD             = PUESTO             (igual)
 DEDUPLICAR_FINALIZACIONES   = SI                 (igual, y aquí pesa más: 17.7%)
 ```
 
-Los dos parámetros nuevos tocan `30_Motor.gs`; ver la etapa 4.
+Los tres parámetros nuevos tocan `30_Motor.gs`; ver la etapa 4.
 
 ### Etapa 4 · El motor · 1 día
 
@@ -418,7 +458,7 @@ El motor es genérico y casi no se toca. Cinco cambios, todos chicos:
 | Dónde | Qué |
 |---|---|
 | `indiceCentros_()` | Se elimina. El centro ya viene resuelto en cada fila del padrón |
-| `filtrarPadron_()` | `FECHA_MINIMA_VALIDA` (decisión 4); `soloOperacion` compara contra `Tipo Posición` |
+| `filtrarPadron_()` | `FECHA_MINIMA_VALIDA` (decisión 4); `PUESTOS_FUERA_DEL_PLAN` (decisión 5), que recolecta a los excluidos igual que `personasSinFecha`; `soloOperacion` compara contra `Tipo Posición` |
 | `indiceFinalizaciones_()` | **Decisión 3.** Una finalización cuenta si `¿Lo Completó?` dice `Si` **o** si su `Sub Estatus` está en `SUBESTATUS_COMPLETADOS`. Hoy solo mira la primera columna |
 | `normalizarCursos_()` | Sin cambios — la agrupación y los alias ya son catálogo |
 | `acumular_()` / `armarTablas_()` | `tipoCobranza` → `tipoCentro` |
@@ -434,8 +474,6 @@ Estructura y CSS **sin cambios**. Solo textos y etiquetas:
 - «Centro» sigue diciendo Centro, pero muestra el departamento
 - La columna nueva `tipo_centro` en la vista de centros
 - 26 regiones en el ranking en vez de 15 — el panel ya pagina con `regionsMore`
-- **Los 44 puestos sin plan** (§5): mostrar `personasSinPlan` en el encabezado, para
-  que "0 de 0 cursos" tenga explicación
 - `reportesDisponibles_()` en `90_WebApp.gs`: aquí es donde CEDIS y Cobranza se
   enlazan, con la misma mecánica de salto entre despliegues del tablero de Tienda
 
@@ -486,8 +524,8 @@ publicar.
 - [ ] `revisarFuentes()` reconoce los cuatro archivos
 - [ ] `ensayarCorte('2026-08')` completa y cuadra
 - [ ] Los conteos de diagnóstico se revisan uno por uno contra §2 de este documento:
-      **padrón 15,252 → 15,018 publicados**, 76 centinela, 158 futura,
-      `cursosDelPlanSinFuente = 0`, `personasSinPlan = 226`
+      **padrón 15,252 → 14,819 publicados**, 200 sin puesto en el PDT, 76
+      centinela, 157 futura, `cursosDelPlanSinFuente = 0`
 - [ ] La especialización le llega a las **5,181 personas** que la tienen en P3
 - [ ] `procesarCorte()` en frío, **cronometrado** contra el límite de 1,800 s
 - [ ] Los números del ensayo se anotan en el README como referencia
@@ -540,14 +578,14 @@ Y tres que son de CEDIS:
 | Etapa | Días | Depende de |
 |---|---:|---|
 | 0 · Preparar el repo | 0.5 | — |
-| 1 · Identidad del reporte | 0.5 | 0 |
+| 1 · Identidad del reporte | ~~0.5~~ **hecha** | 0 |
 | 2 · Ingesta | 3 | 1, 6 |
 | 3 · Semillas y parámetros | 2 | 1 |
 | 4 · Motor | 1 | 2, 3 |
 | 5 · Tablero | 1 | 4 |
 | 6 · Aligerado | 1 | 0 |
 | 7 · Ensayo | 2 | todas |
-| | **11 días** | |
+| | **10.5 días restantes** | |
 
 Las etapas 2, 3 y 6 son independientes entre sí y se pueden hacer en paralelo. **Ya
 no hay nada esperando insumos del área:** las cuatro decisiones están tomadas y P2
@@ -563,8 +601,9 @@ El tablero de CEDIS está terminado cuando:
 2. `revisarFuentes()` reconoce los cuatro archivos de CEDIS
 3. `ensayarCorte('2026-08')` completa, cuadra el control algebraico y reporta
    `cursosDelPlanSinFuente = 0`
-4. El padrón publicado es de **15,018 colaboradores** de 15,252 leídos, y las 234
-   exclusiones están explicadas una por una en el diagnóstico
+4. El padrón publicado es de **14,819 colaboradores** de 15,252 leídos, y las 433
+   exclusiones están explicadas una por una en el diagnóstico: 200 por puesto
+   fuera del PDT, 76 por fecha centinela, 157 por fecha posterior al corte
 5. Las **26 regiones** aparecen en el ranking, ninguna como `Sin región`
 6. La especialización de conductores le llega a las **5,181 personas** que la
    tienen en P3, no a 0

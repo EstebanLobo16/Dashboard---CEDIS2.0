@@ -10,6 +10,7 @@ Lo que corre fuera de Apps Script.
 | `correr_motor.js` | Corre el motor de `30_Motor.gs` fuera de Apps Script, contra fuentes reales |
 | `montar_tablero.js` | Arma el tablero en un HTML abrible, con los datos de un paquete real |
 | `probar_ingesta.js` | Corre el `leerFuentes_` real contra un Drive simulado y cuenta las conversiones |
+| `probar_identidad.js` | Revisa que la identidad del reporte esté completa y que nadie la lleve escrita duro |
 
 ## Aligerar los archivos crudos
 

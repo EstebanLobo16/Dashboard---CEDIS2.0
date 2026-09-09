@@ -9,6 +9,17 @@
  * Las decisiones que quedaron abiertas en docs/00-propuesta.md §7 están
  * sembradas con la recomendación de la propuesta. Cambiar de opinión es cambiar
  * un renglón en la hoja, no volver a desplegar.
+ *
+ * ⚠ PENDIENTE — ETAPA 3
+ *
+ * Todo lo que sigue es TODAVÍA CONTENIDO DE COBRANZA: las 15 regiones, los
+ * puestos gerenciales, los centros del Centro de Impresión y los patrones de
+ * archivo. La etapa 1 solo cambió la identidad del reporte (00_Config.gs); las
+ * semillas se reemplazan en la etapa 3, con los datos ya medidos en
+ * docs/06-plan-cedis.md §2.
+ *
+ * NO corras instalar() en producción hasta entonces: crearía la hoja de
+ * Catálogos de CEDIS con las reglas de Cobranza dentro.
  */
 
 const SEMILLAS = Object.freeze({

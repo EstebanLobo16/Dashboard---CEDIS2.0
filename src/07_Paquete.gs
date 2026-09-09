@@ -30,7 +30,8 @@ function publicarPaquete(contenido) {
     try {
       paquete = JSON.parse(String(contenido || ''));
     } catch (error) {
-      throw new Error('El archivo que seleccionaste no es un paquete válido de Cobranza.');
+      throw new Error(
+        `El archivo que seleccionaste no es un paquete válido de ${CONFIG.nombreReporte}.`);
     }
 
     validarPaquete_(paquete);
@@ -275,7 +276,7 @@ function archivarCorteAnterior_(corte, periodoNuevo) {
     },
   };
 
-  const nombre = `cobranza-colaborador-${periodoAnterior}.json`;
+  const nombre = `${CONFIG.reporte}-colaborador-${periodoAnterior}.json`;
   const carpeta = DriveApp.getFolderById(
     PropertiesService.getScriptProperties().getProperty(CONFIG.props.carpetaArchivo)
   );

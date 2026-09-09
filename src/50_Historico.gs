@@ -120,7 +120,7 @@ function archivoDeDetalle_(periodo) {
   const id = PropertiesService.getScriptProperties().getProperty(CONFIG.props.carpetaArchivo);
   if (!id) return null;
 
-  const nombre = `cobranza-colaborador-${periodo}.json`;
+  const nombre = `${CONFIG.reporte}-colaborador-${periodo}.json`;
   let carpeta;
   try {
     carpeta = DriveApp.getFolderById(id);
@@ -202,7 +202,8 @@ function periodosArchivados_() {
   const periodos = [];
   const archivos = DriveApp.getFolderById(id).getFiles();
   while (archivos.hasNext()) {
-    const m = archivos.next().getName().match(/cobranza-colaborador-(\d{4}-\d{2})\.json/);
+    const m = archivos.next().getName()
+      .match(new RegExp(`^${CONFIG.reporte}-colaborador-(\\d{4}-\\d{2})\\.json$`));
     if (m) periodos.push(m[1]);
   }
   return periodos.sort();
@@ -230,7 +231,8 @@ function cargarHistorico(contenido) {
   try {
     paquete = JSON.parse(String(contenido || ''));
   } catch (error) {
-    throw new Error('El archivo que seleccionaste no es un paquete válido de Cobranza.');
+    throw new Error(
+      `El archivo que seleccionaste no es un paquete válido de ${CONFIG.nombreReporte}.`);
   }
   validarPaquete_(paquete);
 
@@ -277,7 +279,7 @@ function guardarDetalleArchivado_(paquete) {
     hojas: { Colaborador: { columnas: columnas.slice(), filas: paquete.hojas.Colaborador.filas } },
   };
 
-  const nombre = `cobranza-colaborador-${paquete.periodo}.json`;
+  const nombre = `${CONFIG.reporte}-colaborador-${paquete.periodo}.json`;
   const carpeta = DriveApp.getFolderById(
     PropertiesService.getScriptProperties().getProperty(CONFIG.props.carpetaArchivo)
   );
@@ -305,7 +307,7 @@ function estadoHistorico() {
   const historico = abrir_('historico');
   const periodos = periodosDelHistorico_();
   const lineas = [
-    'Histórico del tablero de Cobranza',
+    `Histórico del tablero de ${CONFIG.nombreReporte}`,
     '',
     `Periodos publicados: ${periodos.length}` + (periodos.length ? ` (${periodos[0]} a ${periodos[periodos.length - 1]})` : ''),
   ];

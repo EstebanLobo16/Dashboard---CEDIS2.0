@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const SRC = '/home/user/Dashboard---cobranza-2.0/src';
+const SRC = path.join(__dirname, '..', 'src');
 const paquetePath = process.argv[2];
 
 const contexto = {

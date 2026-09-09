@@ -317,11 +317,13 @@ function leerFuentes_(periodo, diagnostico) {
     'Categoria de asignación': 'categoria',
   }, encabezado).filter((f) => String(f.numeroColaborador || '').trim());
 
+  // TODO(etapa 2): CEDIS no tiene catálogo de centros. Esta fuente y las dos de
+  // la Planta desaparecen, y el centro pasa a salir del propio padrón.
   const centros = leerPestana_(planta, fuente_('centros_tipocentros').pestana, {
     '# Centro': 'centro',
     'REGION COBRANZA': 'region',
     'NOMENCLATURA': 'nomenclatura',
-    'TIPO COBRANZA': 'tipoCobranza',
+    'TIPO COBRANZA': 'tipoCentro',
   });
 
   // --- Detalle Colaborador: la fecha de contratación ------------------------

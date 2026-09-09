@@ -1,15 +1,24 @@
-# Tablero de avance de capacitación · Cobranza
+# Tablero de avance de capacitación · CEDIS
 
-Réplica del tablero de Tienda sobre datos de Cobranza, íntegramente en Google
+Réplica del tablero de Cobranza sobre datos de CEDIS, íntegramente en Google
 Apps Script. Universidad Corporativa · Coppel.
+
+> **En construcción · etapa 1 de 7 terminada.** El código heredado de Cobranza
+> está completo y probado en producción; lo que falta es adaptarlo a las fuentes
+> y las reglas de CEDIS. El plan, con los datos ya medidos, está en
+> **[`docs/06-plan-cedis.md`](docs/06-plan-cedis.md)**.
+>
+> **No corras `instalar()` todavía:** `src/02_Semillas.gs` sigue trayendo los
+> catálogos de Cobranza y sembraría las reglas equivocadas. Va después de la
+> etapa 3.
 
 ## Por dónde empezar
 
 | Si eres… | Lee |
 |---|---|
+| Quien va a **construir** este tablero | **[`docs/06-plan-cedis.md`](docs/06-plan-cedis.md)** — el plan, con los datos de CEDIS ya medidos |
+| Quien **retoma este proyecto** sin contexto | El plan de arriba, y luego [lo que se hereda de Cobranza](#lo-que-se-hereda-de-cobranza) |
 | Quien **usa** el tablero o necesita configurarlo | **[`docs/manual.html`](docs/manual.html)** — el manual completo, ábrelo en el navegador |
-| Quien **retoma este proyecto** sin contexto | **[Estado actual](#estado-actual-2026-09-09)**, aquí abajo |
-| Quien va a construir el **tablero de CEDIS** | **[`docs/06-plan-cedis.md`](docs/06-plan-cedis.md)** — el plan de trabajo, con los datos de CEDIS ya medidos |
 | Quien lo va a **instalar** | [`docs/instalacion.html`](docs/instalacion.html) — ábrelo en el navegador |
 | Quien **opera** el tablero mes con mes | [`docs/05-operacion.md`](docs/05-operacion.md) |
 | Quien **toca el código** | [`src/README.md`](src/README.md) |
@@ -41,7 +50,7 @@ Apps Script. Universidad Corporativa · Coppel.
 
 ## Cómo funciona, en corto
 
-El área deja cinco archivos en una carpeta de Drive. El día 11 se revisa que
+El área deja sus archivos en una carpeta de Drive. El día 11 se revisa que
 estén; el 12 el motor los lee, aplica las reglas del plan de capacitación y
 publica el corte. El tablero lo muestra, y los meses cerrados quedan en el
 histórico.
@@ -51,7 +60,15 @@ puede publicar— viven en una hoja de cálculo que el área edita sin tocar có
 
 ---
 
-# Estado actual (2026-09-09)
+# Lo que se hereda de Cobranza
+
+Todo lo que sigue describe el **tablero de Cobranza**, que es de donde sale este
+código. Se conserva completo a propósito: son los números de referencia, las
+trampas que ya costaron horas y las decisiones que no hay que volver a tomar.
+
+Para el estado de **CEDIS**, ver [`docs/06-plan-cedis.md`](docs/06-plan-cedis.md).
+
+## Estado de Cobranza (2026-09-09)
 
 Las cinco etapas están entregadas y el sistema está **instalado y corriendo** en
 Apps Script. Lo que falta es cerrar la primera publicación real.

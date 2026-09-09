@@ -50,7 +50,7 @@ function instalar() {
  */
 function estado() {
   const props = PropertiesService.getScriptProperties();
-  const lineas = ['Estado del tablero de Cobranza', ''];
+  const lineas = [`Estado del tablero de ${CONFIG.nombreReporte}`, ''];
 
   Object.keys(CONFIG.props).forEach((clave) => {
     const valor = props.getProperty(CONFIG.props[clave]);

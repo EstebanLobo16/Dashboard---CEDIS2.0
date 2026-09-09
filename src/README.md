@@ -1,10 +1,29 @@
-# Proyecto de Apps Script — Tablero de Cobranza
+# Proyecto de Apps Script — Tablero de CEDIS
 
-Estado: **completo**. Almacén, catálogos, control de administradores, motor de
-proceso, aplicación web, histórico navegable y automatización.
+Réplica del tablero de Cobranza, que está completo y publicando en producción.
+Almacén, catálogos, control de administradores, motor de proceso, aplicación web,
+histórico navegable y automatización: todo eso viene heredado y funcionando.
+
+Estado: **etapa 1 de 7 · la identidad del reporte**. Lo que falta —la ingesta, las
+semillas y el ensayo— está en **`docs/06-plan-cedis.md`**.
+
+> ⚠ **No corras `instalar()` todavía.** `02_Semillas.gs` sigue trayendo los
+> catálogos de Cobranza; se reemplazan en la etapa 3.
 
 Para operarlo mes con mes: **`docs/05-operacion.md`**. Este archivo es para quien
 toque el código.
+
+## Qué NO debe saber de CEDIS
+
+La identidad del área vive **solo** en `00_Config.gs`. Todo lo demás pregunta por
+`CONFIG.reporte` y `CONFIG.nombreReporte`: el prefijo de la caché, el nombre del
+menú, el asunto de los correos, el nombre de los detalles archivados y el formato
+del paquete. El navegador lo recibe del servidor (`packageFormat`), no lo lleva
+escrito.
+
+Si encuentras un `'cedis'` o un `'CEDIS'` escrito duro fuera de `00_Config.gs`,
+de `02_Semillas.gs` o de un comentario que explique de dónde salió una regla, es
+un error: cuesta un renglón arreglarlo y ahorra la siguiente réplica.
 
 ## Archivos
 

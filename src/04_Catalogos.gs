@@ -7,9 +7,15 @@
  * invalidarCacheCatalogos_().
  */
 
+/** El prefijo de las llaves de caché. Sale de CONFIG para que dos tableros en
+ *  el mismo proyecto de Apps Script no se lean los catálogos uno al otro. */
+function llaveDeCatalogo_(nombre) {
+  return `${CONFIG.reporte}_cat_${nombre}`;
+}
+
 function catalogo_(nombre) {
   const cache = CacheService.getScriptCache();
-  const llave = `cob_cat_${nombre}`;
+  const llave = llaveDeCatalogo_(nombre);
   const guardado = cache.get(llave);
   if (guardado) {
     try {
@@ -30,7 +36,7 @@ function catalogo_(nombre) {
 }
 
 function invalidarCacheCatalogos_() {
-  const llaves = Object.keys(ESQUEMA_CATALOGOS).map((n) => `cob_cat_${n}`);
+  const llaves = Object.keys(ESQUEMA_CATALOGOS).map(llaveDeCatalogo_);
   CacheService.getScriptCache().removeAll(llaves);
 }
 
@@ -72,7 +78,7 @@ function parametroNumero_(clave, porDefecto) {
  *  Regiones
  * ------------------------------------------------------------------ */
 
-/** Las 15 regiones oficiales, en el orden del documento de lógicas. */
+/** Las regiones oficiales del área, en el orden del documento de lógicas. */
 function regionesOficiales_() {
   return catalogo_('Regiones')
     .slice()
@@ -82,7 +88,7 @@ function regionesOficiales_() {
 }
 
 /**
- * Traduce lo que trae CENTROS-TIPOCENTROS a una de las 15 regiones oficiales.
+ * Traduce la región que traen las fuentes a una de las regiones oficiales.
  * Devuelve null si la región no se reconoce ni está mapeada, para que el motor
  * pueda reportarla en vez de publicarla como región fantasma.
  */

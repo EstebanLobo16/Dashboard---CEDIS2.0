@@ -11,7 +11,7 @@
  * posicionales dentro del paquete .json.
  */
 
-/** COB · Catálogos — lo que edita negocio. El motor lo lee, nunca lo reescribe. */
+/** Catálogos — lo que edita negocio. El motor lo lee, nunca lo reescribe. */
 const ESQUEMA_CATALOGOS = Object.freeze({
   Parametros:         ['clave', 'valor', 'tipo', 'descripcion'],
   Administradores:    ['correo', 'nombre', 'puede_publicar', 'nota'],
@@ -24,7 +24,7 @@ const ESQUEMA_CATALOGOS = Object.freeze({
   Fuentes:            ['clave', 'patron', 'obligatorio', 'pestana', 'nota'],
 });
 
-/** COB · Corte vigente — solo el periodo publicado. Es lo único que el tablero
+/** Corte vigente — solo el periodo publicado. Es lo único que el tablero
  *  lee en caliente, y por eso se mantiene chico pase lo que pase.
  *
  *  Colaborador lleva las dos antigüedades por separado: `dias_laborados` cuenta
@@ -42,7 +42,7 @@ const ESQUEMA_CORTE = Object.freeze({
     'colaboradores', 'cursos_asignados', 'cursos_completados', 'cursos_pendientes', 'avance',
   ],
   Centro: [
-    'reporte', 'periodo', 'fecha_corte', 'region', 'centro', 'nomenclatura', 'tipo_cobranza',
+    'reporte', 'periodo', 'fecha_corte', 'region', 'centro', 'nomenclatura', 'tipo_centro',
     'colaboradores', 'cursos_asignados', 'cursos_completados', 'cursos_pendientes', 'avance',
   ],
   Curso: [
@@ -69,7 +69,7 @@ const ESQUEMA_CORTE = Object.freeze({
   ],
 });
 
-/** COB · Histórico — los mismos agregados, acumulados por corte. NO lleva
+/** Histórico — los mismos agregados, acumulados por corte. NO lleva
  *  Colaborador: el detalle por persona de meses cerrados se archiva como .json
  *  en Drive (ver docs/01-contrato-de-datos.md, §4). Con eso el tablero rinde
  *  igual en el mes 1 que en el mes 40. */

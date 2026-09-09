@@ -18,8 +18,8 @@
  * Revisa que los archivos crudos estén y de cuándo son. **No** los abre: mira
  * nombre y fecha de modificación, que es barato y suficiente para responder «el
  * área todavía no subió nada». Si una fuente está pero desactualizada por
- * dentro —la Planta con la pestaña del mes pasado— eso lo detecta el ensayo,
- * que sí la abre.
+ * dentro —un CSV con el corte del mes pasado— eso lo detecta el ensayo, que sí
+ * la abre.
  */
 function revisarFuentes(periodo) {
   const cual = String(periodo || '').trim() || periodoActivo_();
@@ -91,8 +91,8 @@ function revisarDatosCrudos(periodo) {
 /**
  * Corre unos días antes del corte y avisa solo si falta algo.
  *
- * El día 11 a propósito: la Plantilla de Cobranza se actualiza a más tardar el
- * día 10 y el corte se procesa el 12, así que este aviso llega con un día para
+ * El día 11 a propósito: las fuentes del área se actualizan a más tardar el día
+ * 10 y el corte se procesa el 12, así que este aviso llega con un día para
  * reclamar. Avisar el día 12, cuando ya truena, no sirve de nada.
  *
  * Si todo está, no manda nada: un correo mensual que siempre dice "todo bien"
@@ -142,7 +142,7 @@ function diagnostico() {
     ['Disparadores', estadoDeDisparadores],
   ];
 
-  const lineas = ['DIAGNÓSTICO DEL TABLERO DE COBRANZA',
+  const lineas = [`DIAGNÓSTICO DEL TABLERO DE ${CONFIG.nombreReporte.toUpperCase()}`,
     Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm"), ''];
 
   partes.forEach(([titulo, funcion]) => {
@@ -205,7 +205,7 @@ function automatizar() {
   if (idCatalogos) {
     ScriptApp.newTrigger('alAbrirCatalogos_')
       .forSpreadsheet(idCatalogos).onOpen().create();
-    hechos.push('Menú "Cobranza" en la hoja de Catálogos.');
+    hechos.push(`Menú "${CONFIG.nombreReporte}" en la hoja de Catálogos.`);
   }
 
   bitacora_('automatizar', '', 'disparadores', hechos.length, hechos.join(' · '));
@@ -236,7 +236,7 @@ function cancelarAutomatizacion() {
  */
 function alAbrirCatalogos_() {
   SpreadsheetApp.getUi()
-    .createMenu('Cobranza')
+    .createMenu(CONFIG.nombreReporte)
     .addItem('Aplicar cambios de los catálogos', 'menuRefrescar_')
     .addSeparator()
     .addItem('Revisar los datos crudos', 'menuRevisarFuentes_')

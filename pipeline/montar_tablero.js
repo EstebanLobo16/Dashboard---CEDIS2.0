@@ -76,7 +76,7 @@ vm.runInContext(`
     return _hojas[nombre] || [];
   };
   archivoDeDetalle_ = function (periodo) {
-    return { periodo: periodo, nombre: 'cobranza-colaborador-' + periodo + '.json',
+    return { periodo: periodo, nombre: CONFIG.reporte + '-colaborador-' + periodo + '.json',
              url: 'https://drive.google.com/demo', megas: 4.2, archivadoEn: '2026-09-01' };
   };
   leerColumnas_ = function (h, nombre, cols) {
