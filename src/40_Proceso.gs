@@ -47,8 +47,8 @@ function procesarCorte(opcionesDeLlamada) {
     diagnostico.conteos.segundosIngesta = Math.round((Date.now() - inicio) / 1000);
     bitacora_('procesarCorte', periodo, 'ingesta',
       fuentes.finalizaciones.length,
-      `padrón ${fuentes.padron.length} · detalle ${fuentes.detalle.length} · ` +
-      `centros ${fuentes.centros.length} · ${diagnostico.conteos.segundosIngesta}s`);
+      `padrón ${fuentes.padron.length} · finalizaciones ${fuentes.finalizaciones.length} · ` +
+      `detalle ${fuentes.detalle.length} · ${diagnostico.conteos.segundosIngesta}s`);
 
     guardarEstado_({ paso: 'calculo', periodo });
     const calculo = calcularCorte_(fuentes, opciones);

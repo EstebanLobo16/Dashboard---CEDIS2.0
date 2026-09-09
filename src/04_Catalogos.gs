@@ -151,6 +151,24 @@ function nombresDeAgrupacion_() {
  *  Plan gerencial y excepciones
  * ------------------------------------------------------------------ */
 
+/**
+ * Cómo se llama en el plan el puesto que los datos llaman de otra forma.
+ *
+ * El padrón de CEDIS dice "COORDINADOR DE TRANSPORTE" y el plan gerencial dice
+ * "COORDINADOR" a secas. Son 26 personas que sí tienen la especialización de
+ * conductores en las finalizaciones, así que sin esta traducción quedarían sin
+ * plan y fuera del tablero.
+ *
+ * Devuelve el mismo puesto cuando no hay regla, que es el caso normal.
+ */
+function puestoDelPlan_(puestoEnDatos) {
+  const clave = textoClave_(puestoEnDatos);
+  if (!clave) return '';
+  const fila = catalogo_('AliasPuestos').find((f) => textoClave_(f.puesto_en_datos) === clave);
+  const destino = fila ? String(fila.puesto_en_plan || '').trim() : '';
+  return destino || String(puestoEnDatos || '').trim();
+}
+
 /** El nivel de la matriz gerencial que le toca a un puesto, o '' si no aplica. */
 function nivelGerencial_(puesto) {
   const clave = textoClave_(puesto);

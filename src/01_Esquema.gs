@@ -18,6 +18,7 @@ const ESQUEMA_CATALOGOS = Object.freeze({
   Regiones:           ['region', 'orden'],
   MapaRegiones:       ['region_origen', 'region_oficial', 'nota'],
   AliasCursos:        ['curso_en_plan', 'curso_en_finalizaciones', 'accion', 'nota'],
+  AliasPuestos:       ['puesto_en_datos', 'puesto_en_plan', 'nota'],
   Agrupaciones:       ['agrupacion', 'curso'],
   NivelesGerencial:   ['puesto', 'nivel_matriz', 'nota'],
   ExcepcionImpresion: ['centro', 'puestos', 'nota'],

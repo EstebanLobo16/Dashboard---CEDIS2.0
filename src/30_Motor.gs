@@ -45,53 +45,11 @@ const SIN_CENTRO = 'Pendiente';
 function calcularCorte_(fuentes, opciones) {
   const diagnostico = { avisos: [], conteos: {} };
 
-  const catalogoCentros = indiceCentros_(fuentes.centros, opciones, diagnostico);
   const plan = construirPlan_(fuentes.planes, opciones, diagnostico);
-  const personas = resolverPadron_(fuentes, catalogoCentros, plan, opciones, diagnostico);
+  const personas = resolverPadron_(fuentes, plan, opciones, diagnostico);
   const finalizaciones = indiceFinalizaciones_(fuentes.finalizaciones, plan, opciones, diagnostico);
 
   return acumular_(personas, plan, finalizaciones, opciones, diagnostico);
-}
-
-
-/* =================================================================== *
- *  Catálogo de centros
- * =================================================================== */
-
-function indiceCentros_(centros, opciones, diagnostico) {
-  const indice = {};
-  const fueraDeCatalogo = {};
-
-  (centros || []).forEach((fila) => {
-    const centro = soloDigitos_(fila.centro);
-    if (!centro) return;
-
-    const cruda = String(fila.region || '').trim();
-    const region = opciones.regionOficial(cruda);
-    if (!region && cruda) {
-      fueraDeCatalogo[cruda] = (fueraDeCatalogo[cruda] || 0) + 1;
-    }
-
-    indice[centro] = {
-      centro,
-      region: region || SIN_REGION,
-      regionCruda: cruda,
-      nomenclatura: String(fila.nomenclatura || '').trim(),
-      tipoCentro: String(fila.tipoCentro || '').trim(),
-    };
-  });
-
-  // Hallazgo 7: publicarlas tal cual metería regiones fantasma al ranking, con
-  // un colaborador cada una. Se avisa para que alguien corrija la fuente.
-  Object.keys(fueraDeCatalogo).forEach((cruda) => {
-    diagnostico.avisos.push(
-      `Región "${cruda}" no está entre las oficiales ni mapeada (${fueraDeCatalogo[cruda]} ` +
-      `centro(s)). Agrégala a MapaRegiones o corrige CENTROS-TIPOCENTROS.`
-    );
-  });
-
-  diagnostico.conteos.centrosEnCatalogo = Object.keys(indice).length;
-  return indice;
 }
 
 
@@ -139,7 +97,7 @@ function construirPlan_(planes, opciones, diagnostico) {
       const puestoClave = textoClave_(puesto.puesto);
       if (!puestoClave) return;
 
-      const alcance = alcanceDeCentros_(puesto.centrosDeCosto, opciones);
+      const alcance = alcanceDeCentros_(puesto, opciones);
       const excluidos = centrosExcluidos_(puesto, puestoClave, opciones);
 
       especificos.forEach((curso) => {
@@ -241,30 +199,50 @@ function nivelAplica_(curso, nivel, puestoClave, diagnostico) {
 }
 
 /**
- * Hallazgo 9: en los PDT, "Centros de costos" dice "007 Cobranzas" — la familia
- * de centro de costo del área, no un centro. Compararla contra números como
- * 500101 descarta el 100% de las asignaciones específicas, y por eso la
- * especialización de conductores hoy no le llega a nadie.
+ * En qué centros de costo aplica una regla específica. Devuelve null cuando
+ * aplica en todos.
  *
- * Devuelve null cuando la regla vale para toda Cobranza, o la lista de centros
- * cuando de verdad nombra centros.
+ * Las dos áreas escriben esto al revés, y leer una como si fuera la otra
+ * invierte exactamente a quién le toca el curso:
+ *
+ *   Cobranza  "Centros de costos: 007 Cobranzas" — la familia entera del área,
+ *             o sea: todos. Compararla contra un número de centro como 500101 no
+ *             empata nunca, y por eso la especialización no le llegaba a nadie
+ *             (hallazgo 9). `esFamiliaDeCentros` es lo que reconoce ese caso.
+ *
+ *   CEDIS     "Centros que si aplican: 045 Distribución Foráneo, 153 Estación
+ *             Rac, …" — nueve centros de costo, y nadie más. Es una lista blanca
+ *             de verdad, y la columna "Centros de costos" viene vacía.
+ *
+ * Manda la lista de inclusión cuando existe. Los valores se comparan por su
+ * número —`soloDigitos_` deja "045 Distribución Foráneo" y "045 - DISTRIBUCION
+ * FORANEA" en el mismo "45"— porque el plan y el padrón los escriben distinto.
  */
-function alcanceDeCentros_(centrosDeCosto, opciones) {
-  const texto = String(centrosDeCosto || '').trim();
+function alcanceDeCentros_(puesto, opciones) {
+  const inclusion = (puesto.centrosQueSiAplican || [])
+    .map((c) => soloDigitos_(c))
+    .filter(Boolean);
+  if (inclusion.length) return sinRepetir_(inclusion);
+
+  const texto = String(puesto.centrosDeCosto || '').trim();
   if (!texto) return null;
   if (opciones.esFamiliaDeCentros(texto)) return null;
 
   const centros = texto.split(/[,;\n/]+/)
     .map((parte) => soloDigitos_(parte))
     .filter(Boolean);
-  return centros.length ? centros : null;
+  return centros.length ? sinRepetir_(centros) : null;
 }
 
 /**
  * Hallazgo 4: la lista de centros exceptuados sí viene en el archivo, en la
  * columna "Centros que no aplican" que el cuaderno ni siquiera lee. Se combina
- * con el catálogo, que es el que manda sobre a qué puestos aplica (el PDF dice
- * 743 y 721; el PDT lista un tercer puesto en la misma pestaña).
+ * con el catálogo, que es el que manda sobre a qué puestos aplica (el PDF de
+ * Cobranza dice 743 y 721; el PDT lista un tercer puesto en la misma pestaña).
+ *
+ * En CEDIS esta columna viene vacía: su restricción es la lista blanca de
+ * arriba. Las dos pueden convivir —primero se ve si el centro está permitido,
+ * después si está exceptuado— y así el día que un área use las dos, funciona.
  */
 function centrosExcluidos_(puesto, puestoClave, opciones) {
   const delArchivo = (puesto.centrosQueNoAplican || [])
@@ -272,10 +250,15 @@ function centrosExcluidos_(puesto, puestoClave, opciones) {
     .filter(Boolean);
 
   const delCatalogo = opciones.centrosExceptuados(puesto.id, puestoClave);
-  const todos = {};
-  delArchivo.concat(delCatalogo).forEach((c) => { todos[c] = true; });
-  return Object.keys(todos);
+  return sinRepetir_(delArchivo.concat(delCatalogo));
 }
+
+function sinRepetir_(lista) {
+  const vistos = {};
+  lista.forEach((v) => { vistos[v] = true; });
+  return Object.keys(vistos);
+}
+
 
 /** Agrupa las reglas por puesto y quita el mismo curso repetido en dos planes. */
 function indexarPlan_(reglas, diagnostico) {
@@ -313,85 +296,65 @@ function indexarPlan_(reglas, diagnostico) {
 /**
  * Quién entra al tablero y con qué atributos.
  *
- * Hallazgo 5: el universo es la Planta por Posiciones, el censo del área, no la
- * nómina completa filtrada por nombre de puesto —que arrastra gente de otras
- * áreas con el mismo nombre de puesto.
+ * En CEDIS el padrón es el propio reporte de asignaciones, ya concentrado a una
+ * fila por persona. Trae la región, el centro de costo, el departamento, el
+ * puesto y las dos fechas, así que aquí no hay nada que reconciliar: se traduce
+ * y ya. Cobranza necesitaba una cascada de tres pasos —id, puente, nombre— para
+ * cruzar la Planta contra el Detalle Colaborador, dos sistemas que identifican
+ * distinto; ese problema aquí no existe.
  *
- * Hallazgo 1: la Planta identifica con número de trabajador (8 dígitos) y el
- * Detalle con número de persona (8 o 9). Son sistemas distintos. Los CSV de
- * finalizaciones traen los dos y sirven de puente.
+ * Lo que sí se conserva son los dos identificadores. `Número Persona` y
+ * `Número Colaborador` difieren en 6,532 de 15,252 personas, y las
+ * finalizaciones vienen indexadas por cualquiera de los dos.
+ *
+ * Los tres ejes del tablero, para CEDIS:
+ *
+ *   centro        el Departamento — el CEDIS físico ("07 CEDIS CROSS OAXC 02")
+ *   nomenclatura  el Centro Costos ("045 - DISTRIBUCION FORANEA")
+ *   tipoCentro    el Área (CEDIS / STAFF / TIENDAS / ZONA)
+ *
+ * y aparte `centroCosto`, que es el número suelto del centro de costo (45) y no
+ * se publica: es con lo que se comparan las listas de centros del plan
+ * específico, que hablan de familias de centro de costo y no de departamentos.
  */
-function resolverPadron_(fuentes, catalogoCentros, plan, opciones, diagnostico) {
-  const puente = construirPuente_(fuentes.puente, diagnostico);
-  const porPersona = {};
-  (fuentes.detalle || []).forEach((fila) => {
-    const id = String(fila.numeroPersona || '').trim();
-    if (id && !porPersona[id]) porPersona[id] = fila;
-  });
-  const porNombre = indicePorNombreUnico_(fuentes.detalle);
-
-  const base = opciones.padron === 'DETALLE'
-    ? padronDesdeDetalle_(fuentes, plan)
-    : (fuentes.padron || []);
-
-  const origenes = { id: 0, puente: 0, nombre: 0, finalizaciones: 0, ninguno: 0 };
-  const origenPuesto = { detalle: 0, finalizaciones: 0, contratacion: 0, ninguno: 0 };
+function resolverPadron_(fuentes, plan, opciones, diagnostico) {
+  const origenPuesto = { padron: 0, contratacion: 0, ninguno: 0 };
   const personas = [];
   const vistos = {};
+  let repetidas = 0;
 
-  base.forEach((fila) => {
-    const colaborador = String(fila.numeroColaborador || '').trim();
-    if (!colaborador || vistos[colaborador]) return;
-    vistos[colaborador] = true;
+  (fuentes.padron || []).forEach((fila) => {
+    const persona = String(fila.numeroPersona || '').trim();
+    if (!persona) return;
+    if (vistos[persona]) { repetidas += 1; return; }
+    vistos[persona] = true;
 
-    // Cascada del identificador, en orden de confianza.
-    let persona = colaborador;
-    let detalle = porPersona[colaborador];
-    let origen = detalle ? 'id' : '';
+    const colaborador = String(fila.numeroColaborador || '').trim() || persona;
+    const fechaContratacion = fila.fechaContratacion || null;
 
-    if (!detalle && puente.aPersona[colaborador]) {
-      persona = puente.aPersona[colaborador];
-      detalle = porPersona[persona];
-      if (detalle) origen = 'puente';
-    }
-
-    const nombreClave = textoClave_(fila.nombre);
-    if (!detalle && porNombre[nombreClave]) {
-      detalle = porNombre[nombreClave];
-      persona = String(detalle.numeroPersona || colaborador).trim();
-      origen = 'nombre';
-    }
-
-    let fechaContratacion = detalle ? detalle.fechaContratacion : null;
-    if (!fechaContratacion && puente.fecha[colaborador]) {
-      fechaContratacion = puente.fecha[colaborador];
-      if (!origen) origen = 'finalizaciones';
-    }
-    if (!origen) origen = 'ninguno';
-    origenes[origen] += 1;
-
-    // La fecha que decide la vigencia: cuándo tomó ESTE puesto. Tiene su propia
-    // cascada porque las finalizaciones también la traen, y ahí coinciden con el
-    // Detalle en el 99.4% de los casos en que las dos fechas difieren.
-    let fechaPuesto = detalle ? detalle.fechaPuesto : null;
-    let dePuesto = fechaPuesto ? 'detalle' : '';
-    if (!fechaPuesto && puente.fechaPuesto[colaborador]) {
-      fechaPuesto = puente.fechaPuesto[colaborador];
-      dePuesto = 'finalizaciones';
-    }
-    // Último recurso: quien nunca cambió de puesto lo tomó al entrar. Es cierto
-    // para el 43% de la nómina, y para el resto subestima la antigüedad en el
-    // puesto, que es el lado conservador (asigna de más, no de menos).
+    // La fecha que decide la vigencia: cuándo tomó ESTE puesto. En CEDIS la trae
+    // el padrón para todos, pero el respaldo se conserva porque no cuesta nada y
+    // el día que una fila venga incompleta es preferible subestimar la
+    // antigüedad —asignar de más— a dejar a la persona fuera del corte.
+    let fechaPuesto = fila.fechaPuesto || null;
+    let dePuesto = fechaPuesto ? 'padron' : '';
     if (!fechaPuesto && fechaContratacion) {
       fechaPuesto = fechaContratacion;
       dePuesto = 'contratacion';
     }
     origenPuesto[dePuesto || 'ninguno'] += 1;
 
-    const centro = soloDigitos_(fila.centro);
-    const info = catalogoCentros[centro] || {};
-    const dias = fechaContratacion ? diasEntre_(opciones.fechaCorte, fechaContratacion) : null;
-    const diasPuesto = fechaPuesto ? diasEntre_(opciones.fechaCorte, fechaPuesto) : null;
+    const cruda = String(fila.region || '').trim();
+    const region = opciones.regionOficial(cruda);
+    if (!region && cruda) {
+      if (!diagnostico.regionesFueraDeCatalogo) diagnostico.regionesFueraDeCatalogo = {};
+      diagnostico.regionesFueraDeCatalogo[cruda] =
+        (diagnostico.regionesFueraDeCatalogo[cruda] || 0) + 1;
+    }
+
+    // El puesto del plan puede llamarse distinto que el de los datos: el plan
+    // gerencial dice "COORDINADOR" y el padrón "COORDINADOR DE TRANSPORTE".
+    const puestoDelPlan = opciones.puestoDelPlan(fila.puesto);
 
     personas.push({
       colaborador,
@@ -399,102 +362,46 @@ function resolverPadron_(fuentes, catalogoCentros, plan, opciones, diagnostico) 
       nombre: String(fila.nombre || '').trim(),
       codigoPuesto: String(fila.codigoPuesto || '').trim(),
       puesto: String(fila.puesto || '').trim(),
-      puestoClave: textoClave_(fila.puesto),
+      puestoClave: textoClave_(puestoDelPlan),
       departamento: String(fila.departamento || '').trim(),
       categoria: String(fila.categoria || '').trim(),
-      centro: centro || SIN_CENTRO,
-      region: info.region || SIN_REGION,
-      nomenclatura: info.nomenclatura || '',
-      tipoCentro: info.tipoCentro || '',
+      centro: String(fila.departamento || '').trim() || SIN_CENTRO,
+      centroCosto: soloDigitos_(fila.centroCostos),
+      region: region || SIN_REGION,
+      regionCruda: cruda,
+      nomenclatura: String(fila.centroCostos || '').trim(),
+      tipoCentro: String(fila.area || '').trim(),
       fechaContratacion: fechaContratacion ? aTextoFecha_(fechaContratacion) : '',
       fechaPuesto: fechaPuesto ? aTextoFecha_(fechaPuesto) : '',
-      diasLaborados: dias,
-      diasEnPuesto: diasPuesto,
-      origenFecha: origen,
+      diasLaborados: fechaContratacion ? diasEntre_(opciones.fechaCorte, fechaContratacion) : null,
+      diasEnPuesto: fechaPuesto ? diasEntre_(opciones.fechaCorte, fechaPuesto) : null,
+      origenFecha: fechaContratacion ? 'padron' : 'ninguno',
       origenFechaPuesto: dePuesto || 'ninguno',
     });
   });
 
+  // Una región que no está en el catálogo ni mapeada entraría al ranking como
+  // región fantasma. Se avisa para que alguien la agregue o corrija la fuente.
+  Object.keys(diagnostico.regionesFueraDeCatalogo || {}).forEach((cruda) => {
+    diagnostico.avisos.push(
+      `Región "${cruda}" no está entre las oficiales ni mapeada ` +
+      `(${diagnostico.regionesFueraDeCatalogo[cruda]} persona(s)). Agrégala a MapaRegiones o ` +
+      `corrige el archivo del padrón.`
+    );
+  });
+  if (repetidas) {
+    diagnostico.avisos.push(
+      `${repetidas} fila(s) del padrón repiten un número de persona ya visto; se usó la primera.`
+    );
+  }
+
   const filtradas = filtrarPadron_(personas, opciones, diagnostico);
-  diagnostico.conteos.padronLeido = base.length;
+  diagnostico.conteos.padronLeido = (fuentes.padron || []).length;
   diagnostico.conteos.padronPublicado = filtradas.length;
-  diagnostico.conteos.origenDeLaFecha = origenes;
   diagnostico.conteos.origenFechaDePuesto = origenPuesto;
   return filtradas;
 }
 
-/** El puente persona ↔ colaborador que sale de los propios CSV. */
-function construirPuente_(filas, diagnostico) {
-  const aPersona = {};
-  const fecha = {};
-  const fechaPuesto = {};
-  let conflictos = 0;
-
-  (filas || []).forEach((fila) => {
-    const persona = String(fila.persona || '').trim();
-    const colaborador = String(fila.colaborador || '').trim();
-    if (!persona || !colaborador) return;
-
-    if (aPersona[colaborador] && aPersona[colaborador] !== persona) {
-      conflictos += 1;
-      return;
-    }
-    aPersona[colaborador] = persona;
-    if (fila.fechaContratacion && !fecha[colaborador]) {
-      fecha[colaborador] = fila.fechaContratacion;
-    }
-    if (fila.fechaPuesto && !fechaPuesto[colaborador]) {
-      fechaPuesto[colaborador] = fila.fechaPuesto;
-    }
-  });
-
-  diagnostico.conteos.puenteIdentificadores = Object.keys(aPersona).length;
-  if (conflictos) {
-    diagnostico.avisos.push(
-      `${conflictos} número(s) de colaborador apuntan a más de un número de persona en las ` +
-      `finalizaciones; se ignoran esos pares.`
-    );
-  }
-  return { aPersona, fecha, fechaPuesto };
-}
-
-function indicePorNombreUnico_(detalle) {
-  const cuenta = {};
-  (detalle || []).forEach((fila) => {
-    const clave = textoClave_(fila.nombre);
-    if (!clave) return;
-    if (!cuenta[clave]) cuenta[clave] = [];
-    if (cuenta[clave].length < 2) cuenta[clave].push(fila);
-  });
-  const indice = {};
-  Object.keys(cuenta).forEach((clave) => {
-    if (cuenta[clave].length === 1) indice[clave] = cuenta[clave][0];
-  });
-  return indice;
-}
-
-/**
- * El padrón alterno, para PADRON=DETALLE: la nómina completa filtrada a los
- * puestos que aparecen en algún plan, que es como decidía el cuaderno.
- *
- * El filtro por puesto es lo único que acota las 122,783 filas de la nómina, y
- * por eso arrastra gente de otras áreas que comparte nombre de puesto — el
- * hallazgo 5. Se conserva para poder comparar contra el proceso anterior.
- */
-function padronDesdeDetalle_(fuentes, plan) {
-  return (fuentes.detalle || [])
-    .filter((fila) => plan[textoClave_(fila.puesto)])
-    .map((fila) => ({
-      numeroColaborador: String(fila.numeroPersona || '').trim(),
-      fechaPuesto: fila.fechaPuesto,
-      nombre: fila.nombre,
-      codigoPuesto: fila.codigoPuesto,
-      puesto: fila.puesto,
-      departamento: fila.departamento,
-      categoria: fila.categoria,
-      centro: fila.centro || '',
-    }));
-}
 
 /**
  * Descarta a quien no puede evaluarse, y avisa de cada motivo. Las exclusiones
@@ -758,13 +665,18 @@ function acumular_(personas, plan, finalizaciones, opciones, diagnostico) {
  * restricción que no existe, la otra ignora la que sí.
  */
 function reglaAplica_(regla, persona, sospechosos) {
+  // Las listas del plan hablan de familias de centro de costo (045, 153, 073),
+  // no del departamento donde está la persona. Se comparan contra `centroCosto`,
+  // que es el número suelto, no contra `centro`, que es el CEDIS físico.
+  const suyo = persona.centroCosto;
+
   if (regla.centrosExcluidos && regla.centrosExcluidos.length &&
-      regla.centrosExcluidos.indexOf(persona.centro) !== -1) {
+      regla.centrosExcluidos.indexOf(suyo) !== -1) {
     sospechosos.push({ colaborador: persona.colaborador, centro: persona.centro, curso: regla.curso });
     return false;
   }
   if (!regla.centrosPermitidos) return true;
-  return regla.centrosPermitidos.indexOf(persona.centro) !== -1;
+  return regla.centrosPermitidos.indexOf(suyo) !== -1;
 }
 
 function planDe_(reglas) {

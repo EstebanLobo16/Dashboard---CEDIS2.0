@@ -7,12 +7,25 @@
  * Dos límites mandan sobre el diseño:
  *
  *   · Apps Script no lee .xlsx. Hay que convertir con la API de Drive.
- *   · Un CSV de 65 MB no se puede leer como texto: `getDataAsString()` se queda
+ *   · Un CSV grande no se puede leer como texto: `getDataAsString()` se queda
  *     sin memoria. También se convierte a hoja y se lee por rangos.
  *
  * Las conversiones van a una carpeta de trabajo y se borran al terminar. Si una
  * ejecución se corta a la mitad, la siguiente reutiliza lo ya convertido en vez
  * de volver a hacerlo: convertir es lo caro.
+ *
+ * CEDIS no tiene Planta por Posiciones ni catálogo de centros — las dos cosas de
+ * las que colgaba media ingesta de Cobranza. Su reporte de asignaciones trae la
+ * región, el centro de costo, el departamento y las dos fechas de cada persona,
+ * así que **el propio reporte es el censo del área**. De ahí salen las cuatro
+ * fuentes de aquí en vez de las cinco de Cobranza, y de ahí que se hayan ido
+ * `pestanaMasReciente_()` y `filaDelEncabezado_()`, que existían solo para la
+ * Planta. Ver docs/06-plan-cedis.md §3.1.
+ *
+ * Los dos CSV los produce `pipeline/celda_aligerar_csv.py` a partir de los
+ * archivos que entrega el área: 200 MB en tres archivos de 25 columnas quedan en
+ * 33 MB en dos de 11 y 5. No es una comodidad — un solo archivo de 90 MB queda
+ * pegado al límite de conversión de Drive.
  */
 
 const FILAS_POR_BLOQUE = 20000;
@@ -167,7 +180,7 @@ function limpiarTrabajo_(carpetaTrabajo) {
  * bajo o un espacio al final no rompen nada. Eso es lo que sí rompía antes, con
  * la columna "Puesto " del plan gerencial.
  */
-function leerPestana_(hojaId, nombrePestana, columnas, filaEncabezado) {
+function leerPestana_(hojaId, nombrePestana, columnas, filaEncabezado, desplazamiento) {
   const hoja = SpreadsheetApp.openById(hojaId);
   const pestana = nombrePestana
     ? hoja.getSheetByName(nombrePestana)
@@ -181,6 +194,7 @@ function leerPestana_(hojaId, nombrePestana, columnas, filaEncabezado) {
   const ultimaColumna = pestana.getLastColumn();
   if (ultimaFila < 2) return [];
 
+  const corrimiento = Number(desplazamiento) || 0;
   const inicio = (filaEncabezado || 1);
   // Los guiones bajos se tratan como espacios para que "NÚMERO_PERSONA" y
   // "Número de persona" caigan en la misma comparación.
@@ -206,7 +220,7 @@ function leerPestana_(hojaId, nombrePestana, columnas, filaEncabezado) {
       if (!valores.some((v) => v !== '' && v !== null)) return;
       const objeto = {};
       Object.keys(indices).forEach((destino) => {
-        objeto[destino] = normalizarCelda_(valores[indices[destino]]);
+        objeto[destino] = normalizarCelda_(valores[indices[destino] + corrimiento]);
       });
       filas.push(objeto);
     });
@@ -221,70 +235,93 @@ function normalizarCelda_(valor) {
 }
 
 /**
- * Entre pestañas con nombre de fecha ("01 AGO 26"), la más reciente.
- * Avisa fuerte si no corresponde al periodo que se está procesando: es la señal
- * de que el área todavía no subió el corte del mes y el proceso seguiría
- * corriendo en silencio con datos viejos.
+ * ¿La fila de encabezados está corrida respecto a los datos?
+ *
+ * En `PDT-gerencial-adaptado.xlsx`, pestaña `Cursos_asignados`, la fila 1 trae
+ * doce encabezados pero los datos empiezan con una columna de numeración que el
+ * encabezado no nombra. Todo queda recorrido un lugar:
+ *
+ *     encabezado   Tipo | Rango de meses | Curso   | Modalidad | … | Jefes y Coord.
+ *     dato real       1 | Institucional  |   "0-1" | Te damos… | … | TEC-C-3-99
+ *
+ * Como `leerPestana_` mapea por nombre, sin esto leería **"0-1" como nombre del
+ * curso** e "Institucional" como rango de meses. No truena: publica números que
+ * se ven razonables y no lo son. Es la peor forma de fallar que tiene este
+ * proceso, y por eso se detecta en vez de pedirle al área que arregle el archivo
+ * cada mes.
+ *
+ * La prueba es barata y va en los dos sentidos: la columna que dice llamarse
+ * `Curso` tiene que traer nombres de curso, no rangos; y si trae rangos, la de
+ * junto tiene que traer los nombres. Si las dos cosas se cumplen, hay
+ * corrimiento. Si solo se cumple una, no se toca nada y se avisa: es preferible
+ * un aviso raro a corregir un archivo que estaba bien.
+ *
+ * Devuelve 0 o 1.
  */
-function pestanaMasReciente_(hojaId, periodo, diagnostico) {
-  const pestanas = SpreadsheetApp.openById(hojaId).getSheets();
-  const fechadas = [];
+function corrimientoDeEncabezado_(hojaId, nombrePestana, columnaAncla, diagnostico) {
+  const hoja = SpreadsheetApp.openById(hojaId);
+  const pestana = nombrePestana ? hoja.getSheetByName(nombrePestana) : hoja.getSheets()[0];
+  if (!pestana) return 0;
 
-  pestanas.forEach((pestana) => {
-    const fecha = fechaDeNombreDePestana_(pestana.getName());
-    if (fecha) fechadas.push({ nombre: pestana.getName(), fecha });
-  });
+  const ultimaFila = pestana.getLastRow();
+  const ultimaColumna = pestana.getLastColumn();
+  if (ultimaFila < 2 || ultimaColumna < 2) return 0;
 
-  if (!fechadas.length) {
-    throw new Error(
-      `Ninguna pestaña tiene nombre con formato de fecha (por ejemplo "01 AGO 26"). ` +
-      `Pestañas: ${pestanas.map((p) => p.getName()).join(', ')}`
-    );
+  const alto = Math.min(12, ultimaFila - 1);
+  const valores = pestana.getRange(1, 1, alto + 1, ultimaColumna).getValues();
+  const encabezados = valores[0].map((v) => textoClave_(String(v).replace(/_/g, ' ')));
+  const ancla = encabezados.indexOf(textoClave_(columnaAncla));
+  if (ancla === -1 || ancla + 1 >= ultimaColumna) return 0;
+
+  let enSuLugar = 0;
+  let unaALaDerecha = 0;
+  let filas = 0;
+  for (let f = 1; f <= alto; f += 1) {
+    const aqui = valores[f][ancla];
+    const alLado = valores[f][ancla + 1];
+    if (aqui === '' && alLado === '') continue;
+    filas += 1;
+    if (pareceNombreDeCurso_(aqui)) enSuLugar += 1;
+    if (pareceRangoDeMeses_(aqui) && pareceNombreDeCurso_(alLado)) unaALaDerecha += 1;
   }
+  if (!filas) return 0;
 
-  fechadas.sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
-  const elegida = fechadas[fechadas.length - 1];
-  const suPeriodo = Utilities.formatDate(elegida.fecha, Session.getScriptTimeZone(), 'yyyy-MM');
-
-  if (periodo && suPeriodo !== periodo) {
+  if (unaALaDerecha > filas / 2 && enSuLugar === 0) {
     (diagnostico ? diagnostico.avisos : []).push(
-      `La pestaña más reciente es "${elegida.nombre}" (${suPeriodo}) pero se está procesando ` +
-      `${periodo}. Es probable que esta fuente todavía no tenga el corte del mes.`
+      `La pestaña "${nombrePestana}" trae la fila de encabezados corrida una columna a la ` +
+      `izquierda de los datos (${unaALaDerecha} de ${filas} filas). Se corrigió al leer. ` +
+      `Pídele al área que quite la columna sin encabezado, o que le ponga uno.`
+    );
+    return 1;
+  }
+
+  if (unaALaDerecha && enSuLugar) {
+    (diagnostico ? diagnostico.avisos : []).push(
+      `La pestaña "${nombrePestana}" no se lee limpio: ${enSuLugar} fila(s) traen el curso ` +
+      `en su columna y ${unaALaDerecha} lo traen una a la derecha. Se leyó SIN corregir. ` +
+      `Revisa el archivo a mano antes de publicar este corte.`
     );
   }
-  return elegida.nombre;
+  return 0;
 }
 
-function fechaDeNombreDePestana_(nombre) {
-  const partes = textoClave_(nombre).split(' ');
-  if (partes.length !== 3) return null;
-  const dia = Number(partes[0]);
-  const mes = MESES_ABREVIADOS[partes[1].slice(0, 3)];
-  let anio = Number(partes[2]);
-  if (!dia || !mes || !anio) return null;
-  if (anio < 100) anio += 2000;
-  const fecha = new Date(anio, mes - 1, dia);
-  return isNaN(fecha.getTime()) ? null : fecha;
+/** Un rango de meses del plan: "0-1", "12", o la fecha en que Excel convirtió "3-6". */
+function pareceRangoDeMeses_(valor) {
+  if (valor instanceof Date) return true;
+  const texto = String(valor === null || valor === undefined ? '' : valor).trim();
+  if (!texto) return false;
+  return /^\d+\s*-\s*\d+$/.test(texto) ||
+    /^\d+(\.\d+)?$/.test(texto) ||
+    /^\d{4}-\d{2}-\d{2}/.test(texto);
 }
 
-/**
- * La Planta por Posiciones a veces trae una tabla resumen encima de la tabla
- * nominal. Se busca la fila donde de verdad empieza el encabezado en vez de
- * asumir que es la primera.
- */
-function filaDelEncabezado_(hojaId, nombrePestana, ancla) {
-  const pestana = SpreadsheetApp.openById(hojaId).getSheetByName(nombrePestana);
-  const alto = Math.min(15, pestana.getLastRow());
-  const valores = pestana.getRange(1, 1, alto, pestana.getLastColumn()).getValues();
-  const buscada = textoClave_(ancla);
-
-  for (let i = 0; i < valores.length; i += 1) {
-    if (valores[i].some((v) => textoClave_(v) === buscada)) return i + 1;
-  }
-  throw new Error(
-    `No encontré la columna "${ancla}" en las primeras ${alto} filas de la pestaña ` +
-    `"${nombrePestana}". Puede que el archivo haya cambiado de estructura.`
-  );
+/** Un nombre de curso: texto con letras, y que no sea un rango. */
+function pareceNombreDeCurso_(valor) {
+  if (valor instanceof Date) return false;
+  const texto = String(valor === null || valor === undefined ? '' : valor).trim();
+  if (texto.length < 4) return false;
+  if (pareceRangoDeMeses_(texto)) return false;
+  return /[a-zA-ZáéíóúÁÉÍÓÚñÑ]{3}/.test(texto);
 }
 
 
@@ -293,99 +330,170 @@ function filaDelEncabezado_(hojaId, nombrePestana, ancla) {
  * =================================================================== */
 
 /**
- * Lee las cinco fuentes y devuelve el objeto que consume calcularCorte_().
- * Es la parte lenta del proceso: convertir y leer 300 mil filas.
+ * Lee las cuatro fuentes y devuelve el objeto que consume calcularCorte_().
+ * Es la parte lenta del proceso: convertir y leer 440 mil filas.
+ *
+ * El Detalle Colaborador es opcional y NO participa en ningún cruce: el padrón
+ * de CEDIS ya trae las dos fechas de todas sus personas. Se lee, cuando está,
+ * para poder contrastarlas y avisar si se separan — que es como se detecta que
+ * una de las dos fuentes se quedó con el corte del mes pasado.
  */
 function leerFuentes_(periodo, diagnostico) {
   const propiedades = PropertiesService.getScriptProperties();
   const crudos = DriveApp.getFolderById(propiedades.getProperty(CONFIG.props.carpetaCrudos));
   const trabajo = carpetaDeTrabajo_(propiedades);
 
-  // --- Planta por Posiciones: padrón y catálogo de centros ------------------
-  const archivoPlanta = archivoDeFuente_(crudos, 'planta_posiciones');
-  const planta = comoHojaDeCalculo_(archivoPlanta, trabajo);
-  const pestanaPlanta = pestanaMasReciente_(planta, periodo, diagnostico);
-  const encabezado = filaDelEncabezado_(planta, pestanaPlanta, 'Número de trabajador');
+  const padron = leerPadron_(crudos, trabajo, diagnostico);
+  const finalizaciones = leerFinalizaciones_(crudos, trabajo, diagnostico);
+  const detalle = leerDetalle_(crudos, trabajo);
 
-  const padron = leerPestana_(planta, pestanaPlanta, {
-    'Número de trabajador': 'numeroColaborador',
-    'Nombre del colaborador': 'nombre',
-    'Código de puesto': 'codigoPuesto',
-    'Nombre de puesto': 'puesto',
-    'Centro': 'centro',
+  const planes = [
+    leerPlan_(comoHojaDeCalculo_(archivoDeFuente_(crudos, 'pdt_operacion'), trabajo),
+      'Colaborador', diagnostico),
+    leerPlan_(comoHojaDeCalculo_(archivoDeFuente_(crudos, 'pdt_gerencial'), trabajo),
+      'Gerencial', diagnostico),
+  ];
+
+  contrastarFechas_(padron, detalle, diagnostico);
+  return { padron, finalizaciones, detalle, planes };
+}
+
+/**
+ * El censo del área: una fila por persona, con todo lo que el motor necesita
+ * para situarla y fecharla. Sustituye a la Planta por Posiciones de Cobranza.
+ *
+ * Trae los DOS identificadores, y hacen falta los dos: en los datos de CEDIS
+ * `Número Persona` y `Número Colaborador` difieren en 6,532 de 15,252 personas,
+ * y las finalizaciones vienen indexadas por cualquiera de ellos. Aquí los dos
+ * son únicos y no se cruzan entre sí, así que no hace falta la cascada de
+ * identificadores que Cobranza necesitaba para reconciliar dos sistemas.
+ */
+function leerPadron_(crudos, trabajo, diagnostico) {
+  const hoja = comoHojaDeCalculo_(archivoDeFuente_(crudos, 'padron'), trabajo);
+  const filas = leerPestana_(hoja, null, {
+    'Número Persona': 'numeroPersona',
+    'Número Colaborador': 'numeroColaborador',
+    'Nombre Colaborador|Nombre del colaborador': 'nombre',
+    'Región RRHH|Region': 'region',
+    'Centro Costos|Centro de Costos': 'centroCostos',
+    'Área': 'area',
     'Departamento': 'departamento',
-    'Categoria de asignación': 'categoria',
-  }, encabezado).filter((f) => String(f.numeroColaborador || '').trim());
+    'Puesto|Nombre de puesto': 'puesto',
+    'Tipo Posición|Categoría de asignación': 'categoria',
+    'Fecha Contratación': 'fechaContratacion',
+    'Fecha Asignación Puesto': 'fechaPuesto',
+  }).filter((f) => String(f.numeroPersona || '').trim());
 
-  // TODO(etapa 2): CEDIS no tiene catálogo de centros. Esta fuente y las dos de
-  // la Planta desaparecen, y el centro pasa a salir del propio padrón.
-  const centros = leerPestana_(planta, fuente_('centros_tipocentros').pestana, {
-    '# Centro': 'centro',
-    'REGION COBRANZA': 'region',
-    'NOMENCLATURA': 'nomenclatura',
-    'TIPO COBRANZA': 'tipoCentro',
+  if (!filas.length) {
+    throw new Error(
+      'El archivo del padrón no trajo ni una fila con "Número Persona". Revisa que sea el ' +
+      'que produce pipeline/celda_aligerar_csv.py y no uno de los CSV originales.'
+    );
+  }
+  diagnostico.conteos.padronLeido = filas.length;
+  return filas;
+}
+
+/**
+ * Lo que cada quien tiene asignado y en qué estatus.
+ *
+ * Se aceptan varios archivos por si el área deja los cortes por separado, y se
+ * lee `Sub Estatus Aprendizaje` además de `¿Lo Completó?`: las dos columnas no
+ * dicen lo mismo —"Exenta" sale como NO completado y para CEDIS sí cuenta— y
+ * cuál manda lo decide un parámetro, no este archivo. Ver docs/06-plan-cedis.md
+ * §3.7.
+ */
+function leerFinalizaciones_(crudos, trabajo, diagnostico) {
+  const filas = [];
+  const archivos = buscarArchivos_(crudos, fuente_('finalizaciones').patron);
+
+  if (!archivos.length) {
+    throw new Error(
+      `No encontré ningún archivo que combine con "${fuente_('finalizaciones').patron}" en la ` +
+      `carpeta de datos crudos. Es la fuente "finalizaciones".`
+    );
+  }
+
+  archivos.forEach((archivo) => {
+    const hoja = comoHojaDeCalculo_(archivo, trabajo);
+    const leidas = leerPestana_(hoja, null, {
+      'Número Persona': 'persona',
+      'Número Colaborador': 'colaborador',
+      'Nombre Curso': 'curso',
+      '¿Lo Completó?': 'completo',
+      'Sub Estatus Aprendizaje': 'subEstatus',
+    });
+    leidas.forEach((fila) => filas.push(fila));
+    diagnostico.avisos.push(`Finalizaciones: ${archivo.getName()} — ${leidas.length} filas.`);
   });
+  return filas;
+}
 
-  // --- Detalle Colaborador: la fecha de contratación ------------------------
-  const detalleHoja = comoHojaDeCalculo_(archivoDeFuente_(crudos, 'detalle_colaborador'), trabajo);
-  // El Detalle Colaborador cambió de formato: los nombres nuevos van primero.
-  // La versión nueva ya no trae departamento ni categoría de asignación, pero
-  // los dos salen de la Planta, que es el padrón.
-  const detalle = leerPestana_(detalleHoja, null, {
+/** El Detalle Colaborador, si está. Solo para contrastar fechas. */
+function leerDetalle_(crudos, trabajo) {
+  const archivo = archivoDeFuente_(crudos, 'detalle_colaborador', false);
+  if (!archivo) return [];
+  return leerPestana_(comoHojaDeCalculo_(archivo, trabajo), null, {
     'NÚMERO PERSONA|Número de persona': 'numeroPersona',
     'NOMBRE COLABORADOR|Nombre': 'nombre',
     'FECHA DE INGRESO|Fecha de contratación de la empresa': 'fechaContratacion',
     'FECHA DE INGRESO DE PUESTO': 'fechaPuesto',
     'CODIGO PUESTO|Código de puesto': 'codigoPuesto',
     'PUESTO|Nombre de puesto': 'puesto',
-    'Nombre del departamento': 'departamento',
-    'Categoría de asignación': 'categoria',
   });
-
-  // --- Finalizaciones: uno o varios cortes parciales ------------------------
-  const finalizaciones = [];
-  const puente = [];
-  const vistosEnPuente = {};
-
-  buscarArchivos_(crudos, fuente_('finalizaciones').patron).forEach((archivo) => {
-    const hoja = comoHojaDeCalculo_(archivo, trabajo);
-    const filas = leerPestana_(hoja, null, {
-      'Número Persona': 'persona',
-      'Número Colaborador': 'colaborador',
-      'Nombre Curso': 'curso',
-      '¿Lo Completó?': 'completo',
-      'Fecha Contratación': 'fechaContratacion',
-      'Fecha Asignación Puesto': 'fechaPuesto',
-    });
-    filas.forEach((fila) => {
-      finalizaciones.push({
-        persona: fila.persona, colaborador: fila.colaborador,
-        curso: fila.curso, completo: fila.completo,
-      });
-      const llave = String(fila.colaborador || '');
-      if (llave && !vistosEnPuente[llave]) {
-        vistosEnPuente[llave] = true;
-        puente.push({
-          persona: fila.persona, colaborador: fila.colaborador,
-          fechaContratacion: fila.fechaContratacion,
-          fechaPuesto: fila.fechaPuesto,
-        });
-      }
-    });
-    diagnostico.avisos.push(`Finalizaciones: ${archivo.getName()} — ${filas.length} filas.`);
-  });
-
-  // --- Los dos planes ------------------------------------------------------
-  const planes = [
-    leerPlan_(comoHojaDeCalculo_(archivoDeFuente_(crudos, 'pdt_operacion'), trabajo), 'Colaborador'),
-    leerPlan_(comoHojaDeCalculo_(archivoDeFuente_(crudos, 'pdt_gerencial'), trabajo), 'Gerencial'),
-  ];
-
-  return { padron, centros, detalle, finalizaciones, puente, planes };
 }
 
+/**
+ * Compara la fecha de asignación de puesto de las dos fuentes y avisa si se
+ * separan más de la cuenta.
+ *
+ * Sobre los datos de agosto coinciden en el 99.0% de las personas que están en
+ * las dos. Si ese número se desploma, casi siempre es que una de las dos fuentes
+ * se quedó con el corte del mes pasado — y eso, sin este aviso, se publica en
+ * silencio con las antigüedades equivocadas.
+ *
+ * No corrige nada: el padrón manda. Solo avisa.
+ */
+function contrastarFechas_(padron, detalle, diagnostico) {
+  if (!detalle || !detalle.length) return;
+
+  const porPersona = {};
+  detalle.forEach((fila) => {
+    const id = String(fila.numeroPersona || '').trim();
+    if (id && !porPersona[id]) porPersona[id] = fila;
+  });
+
+  let comunes = 0;
+  let iguales = 0;
+  padron.forEach((persona) => {
+    const suyo = porPersona[String(persona.numeroPersona || '').trim()];
+    if (!suyo || !suyo.fechaPuesto || !persona.fechaPuesto) return;
+    comunes += 1;
+    if (aTextoFecha_(suyo.fechaPuesto) === aTextoFecha_(persona.fechaPuesto)) iguales += 1;
+  });
+
+  diagnostico.conteos.contrasteConDetalle = {
+    enLasDosFuentes: comunes,
+    fechaDePuestoIgual: iguales,
+    soloEnElPadron: padron.length - comunes,
+  };
+
+  if (comunes && iguales / comunes < 0.9) {
+    diagnostico.avisos.push(
+      `La fecha de asignación de puesto solo coincide con el Detalle Colaborador en ` +
+      `${iguales} de ${comunes} personas (${Math.round(iguales / comunes * 100)}%). Sobre datos ` +
+      `sanos es el 99%. Revisa que las dos fuentes sean del mismo corte antes de publicar.`
+    );
+  }
+}
+
+
+/* =================================================================== *
+ *  Los planes de capacitación
+ * =================================================================== */
+
 /** Las cuatro pestañas de un PDT, con la matriz de niveles si la trae. */
-function leerPlan_(hojaId, familia) {
+function leerPlan_(hojaId, familia, diagnostico) {
   const hoja = SpreadsheetApp.openById(hojaId);
   const nombreDe = (candidatos) => {
     const existentes = hoja.getSheets().map((p) => p.getName());
@@ -401,15 +509,18 @@ function leerPlan_(hojaId, familia) {
 
   const cursos = (pestana, conNiveles) => {
     const nombre = nombreDe(pestana);
+    // El encabezado del PDT gerencial viene corrido; se detecta y se corrige.
+    const corrido = corrimientoDeEncabezado_(hojaId, nombre, 'Curso', diagnostico);
+
     const base = leerPestana_(hojaId, nombre, {
       'Curso': 'curso', 'Tipo': 'tipo', 'Rango de meses para cursar': 'rango',
-    }).filter((f) => String(f.curso || '').trim());
+    }, 1, corrido).filter((f) => String(f.curso || '').trim());
 
     if (!conNiveles) return base;
 
     const matriz = leerPestana_(hojaId, nombre, NIVELES_MATRIZ.reduce((m, nivel) => {
       m[nivel] = nivel; return m;
-    }, { 'Curso': 'curso' }));
+    }, { 'Curso': 'curso' }), 1, corrido);
 
     return base.map((fila, i) => {
       const marcas = matriz[i] || {};
@@ -423,17 +534,36 @@ function leerPlan_(hojaId, familia) {
     });
   };
 
-  const especificos = leerPestana_(hojaId, nombreDe(['Colaboradores_especificos', 'Colaboradores específicos']), {
+  const nombreEspecificos = nombreDe(['Colaboradores_especificos', 'Colaboradores específicos']);
+  const especificos = leerPestana_(hojaId, nombreEspecificos, {
     'ID': 'id', 'Puesto': 'puesto',
     'Centros de costos': 'centrosDeCosto',
     'Centros que no aplican': 'centroQueNoAplica',
+    'Centros que si aplican': 'centroQueSiAplica',
   });
 
-  // "Centros que no aplican" ocupa sus propias filas, no una por puesto: es una
-  // lista que vale para toda la pestaña.
-  const noAplican = especificos
-    .map((f) => String(f.centroQueNoAplica || '').trim())
+  // Las dos columnas de centros ocupan sus propias filas, no una por puesto: son
+  // listas que valen para toda la pestaña.
+  //
+  // Y son opuestas. Cobranza usa "Centros que no aplican" —una lista negra: los
+  // 12 centros del Centro de Impresión quedan fuera de la especialización—. CEDIS
+  // usa "Centros que si aplican", que es lo contrario: solo esos 9 centros de
+  // costo la reciben. Leer una como si fuera la otra invierte exactamente a quién
+  // le toca, así que se leen las dos por separado y el motor decide.
+  const listaDe = (campo) => especificos
+    .map((f) => String(f[campo] || '').trim())
     .filter(Boolean);
+
+  const noAplican = listaDe('centroQueNoAplica');
+  const siAplican = listaDe('centroQueSiAplica');
+
+  if (noAplican.length && siAplican.length) {
+    (diagnostico ? diagnostico.avisos : []).push(
+      `El plan ${familia} trae las dos listas de centros a la vez: ${siAplican.length} en ` +
+      `"Centros que si aplican" y ${noAplican.length} en "Centros que no aplican". Manda la ` +
+      `de inclusión, y la de exclusión se aplica encima. Verifica que sea lo que quiere el área.`
+    );
+  }
 
   return {
     familia,
@@ -448,6 +578,7 @@ function leerPlan_(hojaId, familia) {
         id: f.id, puesto: f.puesto,
         centrosDeCosto: f.centrosDeCosto,
         centrosQueNoAplican: noAplican,
+        centrosQueSiAplican: siAplican,
       })),
   };
 }

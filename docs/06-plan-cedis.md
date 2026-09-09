@@ -267,7 +267,7 @@ volver a discutir.
 
 | # | Decisión | Confirmado | Qué implica |
 |---|---|---|---|
-| **1** | ¿Quién es el padrón de CEDIS? | **Las 15,252 personas del reporte de asignaciones** | `PADRON = FINALIZACIONES`, un valor nuevo. La alternativa (`DETALLE` filtrado por puesto) arrastra gente de otras áreas con el mismo nombre de puesto —`ASISTENTE`, `SECRETARIA`, `COORDINADOR`—: es el hallazgo 5 de Cobranza otra vez |
+| **1** | ¿Quién es el padrón de CEDIS? | **Las 15,252 personas del reporte de asignaciones** | Es la única fuente de censo, así que el parámetro `PADRON` desaparece: una opción con un solo valor no es una opción. La alternativa (`DETALLE` filtrado por puesto) arrastra gente de otras áreas con el mismo nombre de puesto —`ASISTENTE`, `SECRETARIA`, `COORDINADOR`—: es el hallazgo 5 de Cobranza otra vez |
 | **2** | ¿Falta `CEDIS P2.csv`? | **Sí — y ya llegó** | Los 30 cursos del plan cruzan (§2) |
 | **3** | ¿"Finalización omitida" y "Exenta" cuentan como completadas? | **Las dos, sí** | `esAfirmativo_()` deja de bastar: hay que leer `Sub Estatus Aprendizaje`. 7,224 finalizaciones cambian de lado (§6, etapa 4) |
 | **4** | Los 76 `1 ene 1900` y las 158 fechas futuras | **Tratarlas como "sin fecha"** | Parámetro nuevo `FECHA_MINIMA_VALIDA`. Sin él el centinela pasa como 46,000 días de antigüedad y recibe el plan completo, sin aviso |
@@ -371,7 +371,7 @@ hojas y las dos carpetas con nombres CED. **No hacerlo todavía** — `02_Semill
 sigue trayendo los catálogos de Cobranza y sembraría las reglas equivocadas. Va
 después de la etapa 3.
 
-### Etapa 2 · La ingesta · 3 días
+### Etapa 2 · La ingesta · 3 días · **HECHA**
 
 Es la etapa con más trabajo, porque las fuentes de CEDIS no se parecen a las de
 Cobranza. `20_Fuentes.gs` pasa de cinco fuentes a **cuatro**:
@@ -384,18 +384,30 @@ Cobranza. `20_Fuentes.gs` pasa de cinco fuentes a **cuatro**:
 | `pdt_gerencial` | `*gerencial*.xlsx` | Plan Gerencial |
 | `detalle_colaborador` | `*detalle?colaborador*.xlsx` | **Opcional.** Contraste de fechas |
 
+El catálogo `Fuentes` se sembró aquí y no en la etapa 3: es el contrato de esta
+ingesta, no contenido del área.
+
 Se van `planta_posiciones`, `centros_tipocentros` y `planta_centro`, y con ellas
 `filaDelEncabezado_()` y `pestanaMasReciente_()` (que existían solo para la
 Planta). Eso simplifica la ingesta y **quita la fuente más lenta de convertir**.
 
 Cinco piezas nuevas:
 
-1. **`padronDesdeFinalizaciones_()`** — lee el archivo de padrón: nombre, región,
-   centro de costo, área, departamento, puesto, tipo de posición y las dos fechas.
-   Sustituye a `resolverPadron_()` sobre la Planta. La cascada de identificadores y
-   el puente persona↔colaborador **se conservan tal cual**: en los datos de CEDIS
-   `persona ≠ colaborador` en 202,707 de 517,615 filas, así que el puente sigue
-   siendo necesario.
+1. **`leerPadron_()`** — lee el archivo de padrón: los dos identificadores,
+   nombre, región, centro de costo, área, departamento, puesto, tipo de posición y
+   las dos fechas.
+
+   Y con él, `resolverPadron_()` en el motor se simplifica de golpe. Cobranza
+   necesitaba una cascada de tres pasos —id, puente de las finalizaciones,
+   nombre único— para cruzar la Planta contra el Detalle, dos sistemas que
+   identifican distinto. **Aquí ese problema no existe:** el padrón trae los dos
+   identificadores en la misma fila, los dos son únicos y no se cruzan entre sí.
+   Se fueron `indiceCentros_()`, `construirPuente_()`, `indicePorNombreUnico_()`
+   y `padronDesdeDetalle_()`.
+
+   Los dos identificadores **sí se conservan**, porque siguen haciendo falta:
+   difieren en 6,532 de 15,252 personas y las finalizaciones vienen indexadas por
+   cualquiera de los dos.
 
 2. **`detectarCorrimiento_()`** — antes de mapear encabezados, comprobar si la fila
    de datos está corrida respecto a la fila 1 (§3.3). La prueba es barata: si la
@@ -406,7 +418,14 @@ Cinco piezas nuevas:
 
 3. **`Centros que si aplican` como lista blanca** — `alcanceDeCentros_()` recibe la
    lista de inclusión y `centrosExcluidos_()` sigue leyendo la de exclusión. Las
-   dos columnas coexisten; gana la que traiga datos.
+   dos columnas coexisten y manda la de inclusión, así que el día que un área use
+   las dos, funciona.
+
+   Y con eso, `reglaAplica_()` cambia de eje: las listas del plan hablan de
+   **familias de centro de costo** (045, 153, 073), no del departamento donde está
+   la persona. Se comparan contra `centroCosto` —el número suelto, que deja
+   `"045 Distribución Foráneo"` y `"045 - DISTRIBUCION FORANEA"` en el mismo
+   `45`—, no contra `centro`, que es el CEDIS físico.
 
 4. **`AliasPuestos`** — pestaña nueva del catálogo, con el esquema
    `['puesto_en_datos', 'puesto_en_plan', 'nota']`. Se siembra con
@@ -415,9 +434,29 @@ Cinco piezas nuevas:
 5. **El centro de costo como eje** — `centro` = Departamento, `nomenclatura` =
    Centro Costos, `tipo_centro` = Área.
 
-**Verificación:** `node pipeline/probar_ingesta.js — si` con las fuentes de CEDIS.
-La segunda corrida tiene que hacer **0 conversiones y 0 duplicados**, igual que en
-Cobranza. Correrlo antes y después de tocar `20_Fuentes.gs`, sin excepción.
+6. **`contrastarFechas_()`**, que no estaba planeado. El Detalle Colaborador dejó
+   de ser fuente y se quedó sin trabajo; se le dio uno. Compara su fecha de
+   asignación de puesto contra la del padrón y avisa si coinciden en menos del
+   90% de las personas que están en las dos. Sobre los datos de agosto es el
+   99.0%: si ese número se desploma, casi siempre es que una de las dos fuentes
+   se quedó con el corte del mes pasado — y eso, sin el aviso, se publica en
+   silencio con las antigüedades equivocadas.
+
+**Verificación:** `node pipeline/probar_ingesta.js — si` — **20 revisiones, todas
+pasan.** Corre el `leerFuentes_` real contra un Drive simulado con las fuentes de
+CEDIS, incluido un PDT gerencial con el encabezado corrido de verdad.
+
+La segunda corrida hace **0 conversiones y 0 duplicados**, que era su propósito
+original y sigue vigente. Lo demás es nuevo: que el padrón conserve los dos
+identificadores, que las finalizaciones traigan el `Sub Estatus`, que el plan de
+operación se lea alineado, que **el gerencial se lea bien a pesar del corrimiento
+—curso, rango, tipo y matriz de niveles—**, que el corrimiento quede avisado, y
+que la lista blanca de centros no se confunda con la negra.
+
+Se verificó que falla al quitar la corrección: sin ella, el curso del plan
+gerencial se lee como `"0-1"`, que es exactamente el fallo que esto previene.
+
+Correrlo antes y después de tocar `20_Fuentes.gs`, sin excepción.
 
 ### Etapa 3 · Las semillas y los parámetros · 2 días
 
@@ -439,7 +478,6 @@ sale del PDF o de los archivos medidos.
 Parámetros que cambian respecto a Cobranza:
 
 ```
-PADRON                      = FINALIZACIONES     (valor nuevo; decisión 1)
 FILTRAR_CATEGORIA_OPERACION = SI                 (el PDF lo pide)
 FAMILIA_CENTRO_COSTOS       = (vacío)            (CEDIS tiene 34, no una)
 FECHA_MINIMA_VALIDA         = 1950-01-01         (nuevo; decisión 4)
@@ -453,11 +491,12 @@ Los tres parámetros nuevos tocan `30_Motor.gs`; ver la etapa 4.
 
 ### Etapa 4 · El motor · 1 día
 
-El motor es genérico y casi no se toca. Cinco cambios, todos chicos:
+El motor es genérico y casi no se toca. Lo estructural —el padrón, los ejes de
+centro y las listas de centros— se fue con la etapa 2, porque es el mismo
+contrato que la ingesta. Aquí quedan solo las reglas, cuatro cambios chicos:
 
 | Dónde | Qué |
 |---|---|
-| `indiceCentros_()` | Se elimina. El centro ya viene resuelto en cada fila del padrón |
 | `filtrarPadron_()` | `FECHA_MINIMA_VALIDA` (decisión 4); `PUESTOS_FUERA_DEL_PLAN` (decisión 5), que recolecta a los excluidos igual que `personasSinFecha`; `soloOperacion` compara contra `Tipo Posición` |
 | `indiceFinalizaciones_()` | **Decisión 3.** Una finalización cuenta si `¿Lo Completó?` dice `Si` **o** si su `Sub Estatus` está en `SUBESTATUS_COMPLETADOS`. Hoy solo mira la primera columna |
 | `normalizarCursos_()` | Sin cambios — la agrupación y los alias ya son catálogo |
@@ -579,16 +618,16 @@ Y tres que son de CEDIS:
 |---|---:|---|
 | 0 · Preparar el repo | 0.5 | — |
 | 1 · Identidad del reporte | ~~0.5~~ **hecha** | 0 |
-| 2 · Ingesta | 3 | 1, 6 |
+| 2 · Ingesta | ~~3~~ **hecha** | 1, 6 |
 | 3 · Semillas y parámetros | 2 | 1 |
 | 4 · Motor | 1 | 2, 3 |
 | 5 · Tablero | 1 | 4 |
 | 6 · Aligerado | 1 | 0 |
 | 7 · Ensayo | 2 | todas |
-| | **10.5 días restantes** | |
+| | **7.5 días restantes** | |
 
-Las etapas 2, 3 y 6 son independientes entre sí y se pueden hacer en paralelo. **Ya
-no hay nada esperando insumos del área:** las cuatro decisiones están tomadas y P2
+Las etapas 3 y 6 son independientes entre sí y se pueden hacer en paralelo. **Ya
+no hay nada esperando insumos del área:** las cinco decisiones están tomadas y P2
 llegó.
 
 ---

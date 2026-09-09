@@ -108,6 +108,9 @@ const SEMILLAS = Object.freeze({
       '0% a 42.4% de avance.'],
   ],
 
+  // Traducción de puesto entre los datos y el plan. Se llena en la etapa 3.
+  AliasPuestos: [],
+
   // "Formación de Conductores Cobranza 2026" no es un curso: es el nombre de la
   // especialización que se compone de estos tres (PDF de lógicas, página 1).
   Agrupaciones: [
@@ -145,23 +148,29 @@ const SEMILLAS = Object.freeze({
   // Cómo se reconoce cada archivo dentro de la carpeta de datos crudos. Los
   // patrones son estilo glob y no distinguen mayúsculas, para que los sufijos
   // tipo "(12)" o los rangos de fecha en el nombre no rompan nada.
+  //
+  // Son cuatro, no las cinco de Cobranza: CEDIS no tiene Planta por Posiciones
+  // ni catálogo de centros. Los dos CSV los produce celda_aligerar_csv.py; los
+  // originales que entrega el área NO se suben tal cual (200 MB en tres
+  // archivos, dos de ellos pegados al límite de conversión de Drive).
   Fuentes: [
-    ['detalle_colaborador', '*detalle?colaborador*.xlsx', 'SI', '',
-      'Primera pestaña. Aporta la fecha de contratación y la de asignación de puesto. El "?" ' +
-      'cubre tanto "Detalle Colaborador" como "Detalle_Colaborador": el archivo ya cambió de ' +
-      'nombre una vez.'],
-    ['planta_posiciones', 'planta de cobranza por posiciones*.xlsx', 'SI', '(fecha más reciente)',
-      'Padrón del área. La pestaña se elige por fecha; el encabezado real se busca por ' +
-      '"Número de trabajador", no se asume en la fila 1.'],
-    ['centros_tipocentros', 'planta de cobranza por posiciones*.xlsx', 'SI', 'CENTROS-TIPOCENTROS',
-      'Catálogo Centro → Región Cobranza. Va en el mismo archivo que planta_posiciones.'],
-    ['planta_centro', 'planta de cobranza por centro*.xlsx', 'NO', '(fecha más reciente)',
-      'Solo auditoría. No participa en ningún cruce.'],
+    ['padron', 'cedis?padron*.csv', 'SI', '',
+      'El censo del área: una fila por persona, con región, centro de costo, área, ' +
+      'departamento, puesto, tipo de posición y las dos fechas. Sustituye a la Planta por ' +
+      'Posiciones de Cobranza. Lo produce pipeline/celda_aligerar_csv.py.'],
+    ['finalizaciones', 'cedis?finalizaciones*.csv', 'SI', '',
+      'Una fila por persona y curso, con "¿Lo Completó?" y "Sub Estatus Aprendizaje". Se ' +
+      'aceptan varios archivos si el área los deja por separado. Lo produce ' +
+      'pipeline/celda_aligerar_csv.py.'],
     ['pdt_operacion', '*operaci?n*.xlsx', 'SI', '(4 pestañas)',
       'Cursos_asignados, Colaboradores_asignados, Cursos_especificos, Colaboradores_especificos.'],
     ['pdt_gerencial', '*gerencial*.xlsx', 'SI', '(4 pestañas)',
-      'Mismas 4 pestañas, más la matriz de niveles en Cursos_asignados.'],
-    ['finalizaciones', 'cobranza*p*.csv', 'SI', '',
-      'Uno o varios cortes parciales (P1, P2, P3...). Se concentran todos los que haya.'],
+      'Mismas 4 pestañas, más la matriz de niveles en Cursos_asignados. Ojo: su fila de ' +
+      'encabezados viene corrida una columna. La ingesta lo detecta y lo avisa; no hay que ' +
+      'arreglar el archivo a mano.'],
+    ['detalle_colaborador', '*detalle?colaborador*.xlsx', 'NO', '',
+      'OPCIONAL. No participa en ningún cruce: el padrón ya trae las dos fechas de todas sus ' +
+      'personas. Se usa solo para contrastarlas y avisar si las dos fuentes se separan, que ' +
+      'es como se detecta que una se quedó con el corte del mes pasado.'],
   ],
 });

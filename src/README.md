@@ -4,7 +4,7 @@ Réplica del tablero de Cobranza, que está completo y publicando en producción
 Almacén, catálogos, control de administradores, motor de proceso, aplicación web,
 histórico navegable y automatización: todo eso viene heredado y funcionando.
 
-Estado: **etapa 1 de 7 · la identidad del reporte**. Lo que falta —la ingesta, las
+Estado: **etapas 1 y 2 de 7** · la identidad del reporte y la ingesta. Lo que falta —la ingesta, las
 semillas y el ensayo— está en **`docs/06-plan-cedis.md`**.
 
 > ⚠ **No corras `instalar()` todavía.** `02_Semillas.gs` sigue trayendo los

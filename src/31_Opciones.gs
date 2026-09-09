@@ -4,6 +4,11 @@
  * Existe para que 30_Motor.gs no sepa nada de hojas de cálculo: recibe funciones
  * ya resueltas y valores ya convertidos. Cambiar dónde viven las reglas —de una
  * hoja a otra fuente— se hace aquí y el motor ni se entera.
+ *
+ * Ya no hay parámetro PADRON. En Cobranza elegía entre la Planta por Posiciones
+ * y la nómina filtrada por puesto; CEDIS tiene una sola fuente de censo —su
+ * propio reporte de asignaciones— y una opción con un solo valor no es una
+ * opción. Ver docs/06-plan-cedis.md §3.1.
  */
 
 function opcionesDelCorte_(periodo, fechaCorte) {
@@ -13,7 +18,6 @@ function opcionesDelCorte_(periodo, fechaCorte) {
     periodo: periodo || periodoActivo_(),
     fechaCorte: fechaCorte || fechaCorteActiva_(),
 
-    padron: textoClave_(parametro_('PADRON', 'PLANTA')) === 'DETALLE' ? 'DETALLE' : 'PLANTA',
     respetarMatriz: parametroSiNo_('RESPETAR_MATRIZ_GERENCIAL', true),
     deduplicar: parametroSiNo_('DEDUPLICAR_FINALIZACIONES', true),
     soloOperacion: parametroSiNo_('FILTRAR_CATEGORIA_OPERACION', false),
@@ -28,6 +32,7 @@ function opcionesDelCorte_(periodo, fechaCorte) {
     agrupacionDe: agrupacionDe_,
     nombresDeAgrupacion: nombresDeAgrupacion_(),
     nivelGerencial: nivelGerencial_,
+    puestoDelPlan: puestoDelPlan_,
     esFamiliaDeCentros: esFamiliaDeCentros_,
 
     /**

@@ -3,7 +3,7 @@
 Réplica del tablero de Cobranza sobre datos de CEDIS, íntegramente en Google
 Apps Script. Universidad Corporativa · Coppel.
 
-> **En construcción · etapa 1 de 7 terminada.** El código heredado de Cobranza
+> **En construcción · etapas 1 y 2 de 7 terminadas.** El código heredado de Cobranza
 > está completo y probado en producción; lo que falta es adaptarlo a las fuentes
 > y las reglas de CEDIS. El plan, con los datos ya medidos, está en
 > **[`docs/06-plan-cedis.md`](docs/06-plan-cedis.md)**.
