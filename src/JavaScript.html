@@ -1,0 +1,900 @@
+<script>
+  /**
+   * Interfaz del tablero de Cobranza.
+   *
+   * Mismo comportamiento que el tablero de Tienda: los filtros con búsqueda
+   * interna, los esqueletos de carga, el buscador con sugerencias, la paginación
+   * y el modal de publicación. Lo que cambia:
+   *
+   *   · Tienda es Centro, y hay un filtro de Plan (Colaborador / Gerencial).
+   *   · La gráfica mensual dibuja los meses publicados del año, no una barra.
+   *   · Hay un segundo modal para correr el motor sobre los archivos de Drive.
+   *
+   * Cada petición al servidor lleva un número de secuencia: si el usuario cambia
+   * de filtro mientras una respuesta viene en camino, la vieja se descarta. Sin
+   * eso, la respuesta lenta de un filtro anterior pisa la del filtro actual.
+   */
+
+  const state = {
+    data: null, report: '', period: '', cutoffDate: '',
+    filteredOverview: null,
+    region: '', position: '', course: '', plan: '',
+    isCurrent: true, periods: [], comparison: null,
+    overviewRequest: 0, employeeRequest: 0, employeeSearchTimer: null,
+    regionsExpanded: false, coursesExpanded: false,
+    employeePage: 1, employeeTotalPages: 1,
+    importContents: '', importBusy: false, importProgressTimer: null,
+    processBusy: false, processProgressTimer: null,
+  };
+
+  document.addEventListener('DOMContentLoaded', initialize);
+
+  function initialize() {
+    initializeCustomSelects();
+    bindControls();
+    google.script.run.withSuccessHandler(loadDashboard).withFailureHandler(showFatalError).getDashboardData();
+  }
+
+  function loadDashboard(data) {
+    state.data = data;
+    state.report = data.report;
+    state.period = String(data.period || '');
+    state.cutoffDate = String(data.cutoffDate || '');
+    state.isCurrent = data.isCurrent !== false;
+    state.periods = data.periods || [];
+    state.comparison = data.comparison || null;
+
+    ['headerReportName', 'summaryReportName', 'peopleReportName', 'emptyReportName']
+      .forEach((id) => { document.getElementById(id).textContent = data.reportName; });
+    document.getElementById('importTitle').textContent = `${data.empty ? 'Cargar' : 'Actualizar'} ${data.reportName}`;
+
+    const reportSelect = document.getElementById('reportFilter');
+    reportSelect.innerHTML = (data.availableReports || []).map((report) =>
+      `<option value="${escapeHtml(report.key)}" data-url="${escapeHtml(report.url || '')}"${report.key === data.report ? ' selected' : ''}>${escapeHtml(report.name)}</option>`
+    ).join('');
+    refreshCustomSelect('reportFilter');
+
+    const canUpdate = data.canUpdate !== false;
+    toggle('updateDataButton', !canUpdate);
+    toggle('processButton', !canUpdate);
+    toggle('emptyUpdateDataButton', !canUpdate);
+    toggle('emptyProcessButton', !canUpdate);
+    toggle('emptyNoAccess', canUpdate);
+    toggle('emptyView', !data.empty);
+    toggle('floatingToolbarFrame', data.empty);
+    toggle('summaryView', data.empty);
+    document.getElementById('peopleView').classList.add('is-hidden');
+
+    if (data.empty) {
+      document.getElementById('framePeriod').textContent = 'Sin datos publicados';
+      revealApp();
+      return;
+    }
+
+    document.getElementById('framePeriod').textContent =
+      `Avance · ${state.period}${state.isCurrent ? '' : ' · cerrado'}`;
+    populatePeriodSelectors();
+
+    const cutoffLabel = state.cutoffDate || state.period;
+    document.getElementById('cutoffText').textContent = `Fecha de corte ${cutoffLabel}.`;
+    document.getElementById('peopleCutoffText').textContent = `Fecha de corte ${cutoffLabel}.`;
+
+    renderArchiveNotice(data);
+    renderControlNotice(data.control);
+    populateSelect('planFilter', data.planes || [], 'Plan');
+    populateSelect('positionFilter', data.positions || [], 'Puestos');
+    populateSelect('regionFilter', (data.regions || []).map((row) => row.region).sort(), 'Todas');
+    populateCourseSelect(data.courses || []);
+    renderAll();
+    revealApp();
+  }
+
+  function revealApp() {
+    document.getElementById('loading').classList.add('is-hidden');
+    document.getElementById('app').classList.remove('is-hidden');
+  }
+
+  function toggle(id, hidden) {
+    document.getElementById(id).classList.toggle('is-hidden', hidden);
+  }
+
+  /**
+   * Los meses que se pueden abrir. Solo hay algo que elegir cuando el histórico
+   * tiene más de un corte; con uno solo, los selectores quedan fijos como en el
+   * tablero de Tienda.
+   */
+  function populatePeriodSelectors() {
+    const periods = state.periods;
+    const years = [...new Set(periods.map((p) => p.anio))].sort().reverse();
+    const year = state.period.slice(0, 4);
+
+    fillSelect('yearFilter', years.map((a) => ({ value: a, label: a })), year);
+    fillSelect('monthFilter',
+      periods.filter((p) => p.anio === year)
+        .map((p) => ({ value: p.periodo, label: p.nombreMes + (p.esVigente ? ' · vigente' : '') })),
+      state.period);
+
+    const único = periods.length <= 1;
+    ['yearFilter', 'monthFilter'].forEach((id) => {
+      document.getElementById(id).disabled = único;
+      refreshCustomSelect(id);
+    });
+  }
+
+  function fillSelect(id, options, selected) {
+    const select = document.getElementById(id);
+    select.innerHTML = options.map((o) =>
+      `<option value="${escapeHtml(o.value)}"${o.value === selected ? ' selected' : ''}>${escapeHtml(o.label)}</option>`
+    ).join('');
+  }
+
+  /** Al abrir un mes cerrado hay que decir qué se puede ver y qué no. */
+  function renderArchiveNotice(data) {
+    const box = document.getElementById('archiveBox');
+    if (state.isCurrent) { box.classList.add('is-hidden'); return; }
+    const archivo = data.archivo;
+    document.getElementById('archiveTitle').textContent =
+      `Estás viendo ${monthName(state.period.slice(5, 7))} ${state.period.slice(0, 4)}, un corte cerrado`;
+    document.getElementById('archiveText').innerHTML =
+      'Los indicadores, el ranking y los cursos son los de ese mes. El detalle por colaborador ' +
+      (archivo
+        ? `está archivado: <a href="${escapeHtml(archivo.url)}" target="_blank" rel="noopener">${escapeHtml(archivo.nombre)}</a> (${archivo.megas} MB).`
+        : 'de ese mes ya no está disponible.') +
+      ` Para volver al corte publicado, elige ${escapeHtml(monthName(String(data.currentPeriod || '').slice(5, 7)))} en el filtro de mes.`;
+    box.classList.remove('is-hidden');
+  }
+
+  /** Si el control algebraico no cuadró, el número de arriba no es de fiar. */
+  function renderControlNotice(control) {
+    const ok = control && (control.conciliacion_correcta === true ||
+      String(control.conciliacion_correcta).toLowerCase() === 'true');
+    const box = document.getElementById('noticeBox');
+    if (!control || ok) { box.classList.add('is-hidden'); return; }
+    document.getElementById('noticeTitle').textContent = 'Este corte no cuadró consigo mismo';
+    document.getElementById('noticeText').textContent =
+      'Las pestañas de detalle no suman lo mismo que el resumen. Vuelve a procesar el corte antes de usar estas cifras.';
+    box.classList.remove('is-hidden');
+  }
+
+  /* ---------------------------------------------------------------- *
+   *  Render
+   * ---------------------------------------------------------------- */
+
+  function renderAll() {
+    const totals = selectedTotals();
+    renderKpis(totals);
+    renderMonthly(totals.avance);
+    renderRanking();
+    renderCourses();
+  }
+
+  function selectedTotals() {
+    if (state.filteredOverview) return state.filteredOverview.totals;
+    const summary = state.data.summary || {};
+    return {
+      colaboradores: number(summary.colaboradores),
+      asignados: number(summary.cursos_asignados),
+      completados: number(summary.cursos_completados),
+      pendientes: number(summary.cursos_pendientes),
+      avance: number(summary.avance),
+    };
+  }
+
+  function renderKpis(totals) {
+    const colaboradores = totals.colaboradores
+      ? `${integer(totals.colaboradores)} colaboradores`
+      : 'colaboradores del corte';
+    // Los deltas comparan el corte completo. Con filtros puestos no aplican:
+    // el histórico solo guarda totales y no se puede filtrar hacia atrás.
+    const c = state.filteredOverview ? null : state.comparison;
+    document.getElementById('kpiGrid').innerHTML = `
+      <article><span>Avance total</span><strong>${percent(totals.avance)}</strong><small>${integer(totals.completados)} completados${deltaPuntos(c && c.avance)}</small></article>
+      <article><span>Total asignado</span><strong>${integer(totals.asignados)}</strong><small>${colaboradores}${deltaEnteros(c && c.asignados)}</small></article>
+      <article><span>Pendientes</span><strong>${integer(totals.pendientes)}</strong><small>${percent(1 - totals.avance)} del total${deltaEnteros(c && c.pendientes, true)}</small></article>`;
+  }
+
+  /**
+   * Un delta de avance va en PUNTOS PORCENTUALES, no en porcentaje del
+   * porcentaje: de 80% a 84% es "+4 pp", no "+5%". Confundir las dos formas es
+   * la manera más fácil de que un tablero diga algo que no es.
+   */
+  function deltaPuntos(valor) {
+    if (valor === null || valor === undefined) return '';
+    const puntos = valor * 100;
+    // El umbral es el de la propia presentación: si redondeado a un decimal da
+    // cero, no cambió nada que se pueda ver, y "−0.0 pp" solo confunde.
+    if (Math.abs(puntos) < 0.05) return chipDelta(0, 'sin cambio');
+    return chipDelta(puntos, `${puntos > 0 ? '+' : '−'}${Math.abs(puntos).toFixed(1)} pp`);
+  }
+
+  function deltaEnteros(valor, menosEsMejor) {
+    if (valor === null || valor === undefined) return '';
+    if (Math.round(valor) === 0) return chipDelta(0, 'sin cambio');
+    const direccion = menosEsMejor ? -valor : valor;
+    return chipDelta(direccion, `${valor > 0 ? '+' : '−'}${integer(Math.abs(valor))}`);
+  }
+
+  /**
+   * `direccion` dice si el cambio es bueno o malo, que no siempre es lo mismo
+   * que si subió: en Pendientes, bajar es mejor. El color acompaña al signo,
+   * nunca lo sustituye.
+   */
+  function chipDelta(direccion, texto) {
+    const clase = direccion === 0 ? 'flat' : (direccion > 0 ? 'up' : 'down');
+    const flecha = clase === 'flat' ? '' : (clase === 'up' ? '▲ ' : '▼ ');
+    const contra = state.comparison ? ` contra ${state.comparison.etiquetaAnterior}` : '';
+    return `<span class="delta ${clase}" title="${escapeHtml(texto + contra)}">${flecha}${escapeHtml(texto)}</span>`;
+  }
+
+  /**
+   * La gráfica del año. En el tablero de Tienda esto dibuja una sola barra
+   * porque no hay histórico que graficar; aquí son los meses publicados.
+   *
+   * Con filtros puestos, el histórico ya no corresponde —solo guarda totales—,
+   * así que se dibuja la barra del corte con el valor filtrado y se dice.
+   */
+  function renderMonthly(progress) {
+    document.getElementById('monthlyValue').textContent = percent(progress);
+    const chart = document.getElementById('monthlyChart');
+    const months = state.data.monthly || [];
+
+    if (state.filteredOverview || months.length < 2) {
+      const label = months.length ? months[months.length - 1].mes.slice(0, 3) : monthName(state.period.slice(5, 7)).slice(0, 3);
+      chart.innerHTML = `<div class="month-column is-current"><em>${percent(progress, 0)}</em><div style="height:${Math.max(4, progress * 100)}%"></div><small>${escapeHtml(label)}</small></div>`;
+      return;
+    }
+
+    chart.innerHTML = months.map((month) => `
+      <div class="month-column${month.actual ? ' is-current' : ''}" title="${escapeHtml(month.mes)} · ${integer(month.completados)} de ${integer(month.asignados)}">
+        <em>${percent(month.avance, 0)}</em>
+        <div style="height:${Math.max(4, number(month.avance) * 100)}%"></div>
+        <small>${escapeHtml(month.mes.slice(0, 3))}</small>
+      </div>`).join('');
+  }
+
+  function renderRanking() {
+    const source = state.filteredOverview ? state.filteredOverview.regions : (state.data.regions || []);
+    const rows = (state.region ? source.filter((row) => row.region === state.region) : source)
+      .slice().sort(porAvanceRegional);
+    const visible = state.regionsExpanded ? rows : rows.slice(0, 5);
+    const deltas = (state.filteredOverview || !state.comparison) ? {} : state.comparison.regiones;
+    document.getElementById('regionRanking').innerHTML = visible.map((row, index) =>
+      `<div class="rank-row"><b>${String(index + 1).padStart(2, '0')}</b><span>${escapeHtml(row.region)}</span><strong>${percent(row.avance)}</strong>${deltaPuntos(deltas[row.region])}</div>`
+    ).join('') || '<div class="inline-state">Sin resultados</div>';
+    configureMoreButton('regionsMore', rows.length, 5, state.regionsExpanded);
+  }
+
+  function renderCourses() {
+    let rows = (state.filteredOverview ? state.filteredOverview.courses : (state.data.courses || []))
+      .slice().sort((a, b) => number(b.avance) - number(a.avance));
+    if (state.course) rows = rows.filter((row) => String(row.curso_clave || row.curso) === state.course);
+    const visible = state.coursesExpanded ? rows : rows.slice(0, 7);
+    document.getElementById('courseProgress').innerHTML = visible.map((row) => {
+      const grupo = row.agrupacion ? `<small>${escapeHtml(row.agrupacion)}</small>` : '';
+      return `<div class="course-row"><span><strong>${escapeHtml(row.curso)}</strong><small>${integer(row.completados)} de ${integer(row.asignados)}</small>${grupo}</span><i><b style="width:${clamp(number(row.avance) * 100, 0, 100)}%"></b></i><em>${percent(row.avance)}</em></div>`;
+    }).join('') || '<div class="inline-state">Sin resultados</div>';
+    configureMoreButton('coursesMore', rows.length, 7, state.coursesExpanded);
+  }
+
+  /**
+   * Orden del ranking. "Sin región" va siempre al final aunque su avance sea
+   * alto: son las dos personas cuyo centro no está en el catálogo, y con 19
+   * asignaciones encabezaría el ranking por encima de regiones de novecientas.
+   * No se esconde —hay que verla para corregir el catálogo— pero no compite.
+   */
+  function porAvanceRegional(a, b) {
+    const sinA = esSinRegion(a.region);
+    const sinB = esSinRegion(b.region);
+    if (sinA !== sinB) return sinA ? 1 : -1;
+    return number(b.avance) - number(a.avance);
+  }
+
+  function esSinRegion(region) {
+    return normalizeSearch(region) === 'sin region';
+  }
+
+  function configureMoreButton(id, total, limit, expanded) {
+    const button = document.getElementById(id);
+    button.classList.toggle('is-hidden', total <= limit);
+    button.innerHTML = `<span>${expanded ? 'Mostrar menos' : `Ver ${total - limit} más`}</span><span class="more-glyph">${expanded ? '−' : '+'}</span>`;
+  }
+
+  /* ---------------------------------------------------------------- *
+   *  Controles
+   * ---------------------------------------------------------------- */
+
+  function bindControls() {
+    const onFilter = (key) => (event) => {
+      state[key] = event.target.value;
+      state.regionsExpanded = false;
+      if (key === 'course') state.coursesExpanded = false;
+      refreshOverview();
+      if (peopleOpen()) loadEmployees(1);
+    };
+    document.getElementById('yearFilter').addEventListener('change', (event) => {
+      // Al cambiar de año, el primer mes disponible de ese año.
+      const primero = state.periods.find((p) => p.anio === event.target.value);
+      if (primero) abrirPeriodo(primero.periodo);
+    });
+    document.getElementById('monthFilter').addEventListener('change', (event) => abrirPeriodo(event.target.value));
+    document.getElementById('regionFilter').addEventListener('change', onFilter('region'));
+    document.getElementById('positionFilter').addEventListener('change', onFilter('position'));
+    document.getElementById('courseFilter').addEventListener('change', onFilter('course'));
+    document.getElementById('planFilter').addEventListener('change', onFilter('plan'));
+
+    document.getElementById('regionsMore').addEventListener('click', () => { state.regionsExpanded = !state.regionsExpanded; renderRanking(); });
+    document.getElementById('coursesMore').addEventListener('click', () => { state.coursesExpanded = !state.coursesExpanded; renderCourses(); });
+    document.getElementById('peopleToggle').addEventListener('click', openPeople);
+    document.getElementById('toolbarClose').addEventListener('click', closePeople);
+
+    document.getElementById('employeeSearch').addEventListener('input', () => {
+      clearTimeout(state.employeeSearchTimer);
+      state.employeeRequest += 1;
+      showEmployeesSkeleton();
+      showSuggestionLoading();
+      state.employeeSearchTimer = setTimeout(() => { if (peopleOpen()) loadEmployees(1); }, 420);
+    });
+    document.getElementById('employeeSearch').addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') { hideEmployeeSuggestions(); return; }
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      clearTimeout(state.employeeSearchTimer);
+      loadEmployees(1);
+    });
+    document.getElementById('previousPage').addEventListener('click', () => loadEmployees(state.employeePage - 1));
+    document.getElementById('nextPage').addEventListener('click', () => loadEmployees(state.employeePage + 1));
+
+    document.getElementById('updateDataButton').addEventListener('click', openImport);
+    document.getElementById('emptyUpdateDataButton').addEventListener('click', openImport);
+    document.getElementById('choosePackageButton').addEventListener('click', choosePackage);
+    document.getElementById('changePackageButton').addEventListener('click', choosePackage);
+    document.getElementById('packageFileInput').addEventListener('change', readPackage);
+    document.getElementById('publishPackageButton').addEventListener('click', publishPackage);
+    document.getElementById('closeImportButton').addEventListener('click', closeImport);
+    document.getElementById('cancelImportButton').addEventListener('click', closeImport);
+    document.querySelector('[data-close-import]').addEventListener('click', closeImport);
+
+    document.getElementById('processButton').addEventListener('click', openProcess);
+    document.getElementById('emptyProcessButton').addEventListener('click', openProcess);
+    document.getElementById('runProcessButton').addEventListener('click', runProcess);
+    document.getElementById('closeProcessButton').addEventListener('click', closeProcess);
+    document.getElementById('cancelProcessButton').addEventListener('click', closeProcess);
+    document.querySelector('[data-close-process]').addEventListener('click', closeProcess);
+
+    document.addEventListener('click', (event) => {
+      if (!event.target.closest('.custom-select')) closeCustomSelects();
+      if (!event.target.closest('#toolbarSearch')) hideEmployeeSuggestions();
+    });
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeCustomSelects(); });
+  }
+
+  /** Abre otro mes. Los filtros se limpian: los puestos y cursos de un mes
+   *  cerrado no tienen por qué ser los mismos que los del corte vigente. */
+  function abrirPeriodo(periodo) {
+    if (!periodo || periodo === state.period) return;
+    document.getElementById('loading').classList.remove('is-hidden');
+    document.getElementById('app').classList.add('is-hidden');
+    state.filteredOverview = null;
+    state.region = state.position = state.course = state.plan = '';
+    state.regionsExpanded = state.coursesExpanded = false;
+    state.overviewRequest += 1;
+    state.employeeRequest += 1;
+    google.script.run
+      .withSuccessHandler(loadDashboard)
+      .withFailureHandler((error) => { revealApp(); showError(error); })
+      .getDashboardData({ periodo });
+  }
+
+  function refreshOverview() {
+    if (!state.region && !state.position && !state.course && !state.plan) {
+      state.overviewRequest += 1;
+      state.filteredOverview = null;
+      document.getElementById('summaryView').removeAttribute('aria-busy');
+      renderAll();
+      return;
+    }
+    const request = ++state.overviewRequest;
+    showOverviewSkeleton();
+    google.script.run.withSuccessHandler((result) => {
+      if (request !== state.overviewRequest) return;
+      state.filteredOverview = result;
+      document.getElementById('summaryView').removeAttribute('aria-busy');
+      renderAll();
+    }).withFailureHandler((error) => {
+      if (request !== state.overviewRequest) return;
+      document.getElementById('summaryView').removeAttribute('aria-busy');
+      showOverviewFailure();
+      showError(error);
+    }).getFilteredOverview({
+      period: state.period, cutoffDate: state.cutoffDate, isCurrent: state.isCurrent,
+      region: state.region, position: state.position,
+      course: selectedCourseName(), plan: state.plan,
+    });
+  }
+
+  function showOverviewSkeleton() {
+    document.getElementById('summaryView').setAttribute('aria-busy', 'true');
+    document.getElementById('kpiGrid').innerHTML = Array.from({length: 3}, () =>
+      '<article class="skeleton-card"><span class="skeleton-line short"></span><strong class="skeleton-line value"></strong><small class="skeleton-line medium"></small></article>').join('');
+    document.getElementById('monthlyValue').innerHTML = '<span class="skeleton-line tiny"></span>';
+    document.getElementById('monthlyChart').innerHTML = '<div class="skeleton-chart skeleton-shape"></div>';
+    document.getElementById('regionRanking').innerHTML = Array.from({length: 5}, () => '<div class="skeleton-rank"><i class="skeleton-line tiny"></i><i class="skeleton-line medium"></i><i class="skeleton-line short"></i></div>').join('');
+    document.getElementById('courseProgress').innerHTML = Array.from({length: 5}, () => '<div class="skeleton-course"><span><i class="skeleton-line medium"></i><i class="skeleton-line short"></i></span><i class="skeleton-line wide"></i><i class="skeleton-line tiny"></i></div>').join('');
+    document.getElementById('regionsMore').classList.add('is-hidden');
+    document.getElementById('coursesMore').classList.add('is-hidden');
+  }
+
+  function showOverviewFailure() {
+    document.getElementById('kpiGrid').innerHTML = '<div class="inline-state">No fue posible actualizar los indicadores.</div>';
+    document.getElementById('monthlyValue').textContent = '—';
+    document.getElementById('monthlyChart').innerHTML = '<div class="monthly-empty">Sin resultados</div>';
+    document.getElementById('regionRanking').innerHTML = '<div class="inline-state">Sin resultados</div>';
+    document.getElementById('courseProgress').innerHTML = '<div class="inline-state">Sin resultados</div>';
+  }
+
+  /* ---------------------------------------------------------------- *
+   *  Detalle por colaborador
+   * ---------------------------------------------------------------- */
+
+  function openPeople() {
+    document.getElementById('summaryView').classList.add('is-hidden');
+    document.getElementById('peopleView').classList.remove('is-hidden');
+    document.getElementById('reportTitle').textContent = 'Detalle por colaborador';
+    document.getElementById('sheetToolbar').classList.add('people');
+    document.querySelectorAll('.period-filter').forEach((element) => element.classList.add('is-hidden'));
+    document.getElementById('toolbarSearch').classList.remove('is-hidden');
+    document.getElementById('peopleToggle').classList.add('is-hidden');
+    document.getElementById('toolbarClose').classList.remove('is-hidden');
+    loadEmployees(1);
+  }
+
+  function closePeople() {
+    clearTimeout(state.employeeSearchTimer);
+    state.employeeRequest += 1;
+    document.getElementById('peopleView').classList.add('is-hidden');
+    document.getElementById('summaryView').classList.remove('is-hidden');
+    document.getElementById('reportTitle').textContent = 'Reporte de capacitación';
+    document.getElementById('sheetToolbar').classList.remove('people');
+    document.querySelectorAll('.period-filter').forEach((element) => element.classList.remove('is-hidden'));
+    document.getElementById('toolbarSearch').classList.add('is-hidden');
+    document.getElementById('peopleToggle').classList.remove('is-hidden');
+    document.getElementById('toolbarClose').classList.add('is-hidden');
+    hideEmployeeSuggestions();
+  }
+
+  function peopleOpen() { return !document.getElementById('peopleView').classList.contains('is-hidden'); }
+
+  function loadEmployees(page) {
+    const request = ++state.employeeRequest;
+    showEmployeesSkeleton();
+    google.script.run.withSuccessHandler((result) => {
+      if (request !== state.employeeRequest) return;
+      renderEmployeesTable(result);
+      renderEmployeeSuggestions(result.rows || []);
+    }).withFailureHandler((error) => {
+      if (request !== state.employeeRequest) return;
+      showEmployeesFailure();
+      hideEmployeeSuggestions();
+      showError(error);
+    }).searchEmployees({
+      isCurrent: state.isCurrent,
+      query: document.getElementById('employeeSearch').value,
+      region: state.region, position: state.position, plan: state.plan,
+      course: selectedCourseName(),
+      period: state.period, cutoffDate: state.cutoffDate,
+      page, pageSize: 20,
+    });
+  }
+
+  const EMPLOYEE_HEAD = '<thead><tr><th>Colaborador</th><th>Puesto</th><th>Región</th><th>Curso pendiente</th></tr></thead>';
+
+  function showEmployeesSkeleton() {
+    document.getElementById('employeeCount').textContent = 'Actualizando resultados…';
+    document.getElementById('pageStatus').textContent = 'Buscando…';
+    document.getElementById('previousPage').disabled = true;
+    document.getElementById('nextPage').disabled = true;
+    const body = Array.from({length: 7}, () =>
+      '<tr class="skeleton-table-row"><td><i class="skeleton-line medium"></i><i class="skeleton-line short"></i></td><td><i class="skeleton-line medium"></i></td><td><i class="skeleton-line short"></i></td><td><i class="skeleton-line wide"></i></td></tr>').join('');
+    const table = document.getElementById('employeesTable');
+    table.setAttribute('aria-busy', 'true');
+    table.innerHTML = `${EMPLOYEE_HEAD}<tbody>${body}</tbody>`;
+  }
+
+  function showEmployeesFailure() {
+    const table = document.getElementById('employeesTable');
+    table.removeAttribute('aria-busy');
+    table.innerHTML = '<tbody><tr><td colspan="4" class="inline-state">No fue posible actualizar los colaboradores.</td></tr></tbody>';
+    document.getElementById('employeeCount').textContent = 'Consulta no disponible';
+    document.getElementById('pageStatus').textContent = '—';
+  }
+
+  function renderEmployeesTable(result) {
+    const table = document.getElementById('employeesTable');
+    table.removeAttribute('aria-busy');
+
+    if (result.archivado) {
+      const a = result.archivado;
+      table.innerHTML = `<tbody><tr><td colspan="4" class="inline-state">${escapeHtml(result.mensaje)}` +
+        (a.url ? ` <a href="${escapeHtml(a.url)}" target="_blank" rel="noopener">Abrir el archivo</a>.` : '') +
+        '</td></tr></tbody>';
+      document.getElementById('employeeCount').textContent = 'Detalle archivado';
+      document.getElementById('pageStatus').textContent = '—';
+      document.getElementById('previousPage').disabled = true;
+      document.getElementById('nextPage').disabled = true;
+      return;
+    }
+
+    state.employeePage = result.page;
+    state.employeeTotalPages = result.totalPages;
+    document.getElementById('employeeCount').textContent = `${integer(result.total)} pendientes encontrados`;
+    document.getElementById('pageStatus').textContent = `Página ${result.page} de ${result.totalPages}`;
+    document.getElementById('previousPage').disabled = result.page <= 1;
+    document.getElementById('nextPage').disabled = result.page >= result.totalPages;
+
+    const body = result.rows.length
+      ? result.rows.map((row) => `<tr><td><strong>${escapeHtml(row.nombre)}</strong><small>${escapeHtml(row.numero_empleado)} · Centro ${escapeHtml(row.centro)}${row.nomenclatura ? ' · ' + escapeHtml(row.nomenclatura) : ''}</small></td><td>${escapeHtml(row.puesto)}</td><td>${escapeHtml(row.region)}</td><td>${escapeHtml(row.curso_pendiente)}</td></tr>`).join('')
+      : '<tr><td colspan="4">No hay resultados.</td></tr>';
+    table.innerHTML = `${EMPLOYEE_HEAD}<tbody>${body}</tbody>`;
+  }
+
+  function showSuggestionLoading() {
+    const query = document.getElementById('employeeSearch').value.trim();
+    const panel = document.getElementById('employeeSuggestions');
+    if (!query) { hideEmployeeSuggestions(); return; }
+    panel.innerHTML = '<div class="employee-suggestion-state">Buscando sugerencias…</div>';
+    panel.classList.remove('is-hidden');
+  }
+
+  function renderEmployeeSuggestions(rows) {
+    const input = document.getElementById('employeeSearch');
+    const query = input.value.trim();
+    const panel = document.getElementById('employeeSuggestions');
+    if (!query || !peopleOpen() || document.activeElement !== input) { hideEmployeeSuggestions(); return; }
+    if (!rows.length) {
+      panel.innerHTML = '<div class="employee-suggestion-state">No encontramos coincidencias.</div>';
+      panel.classList.remove('is-hidden');
+      return;
+    }
+    panel.innerHTML = rows.slice(0, 8).map((row) =>
+      `<button class="employee-suggestion" type="button" role="option" data-employee-name="${escapeHtml(row.nombre)}"><span><strong>${escapeHtml(row.nombre)}</strong><small>${escapeHtml(row.numero_empleado)} · Centro ${escapeHtml(row.centro || '—')}</small></span><small>${escapeHtml(row.curso_pendiente || '')}</small></button>`
+    ).join('');
+    panel.querySelectorAll('.employee-suggestion').forEach((button) => button.addEventListener('click', () => {
+      input.value = button.dataset.employeeName || '';
+      hideEmployeeSuggestions();
+      clearTimeout(state.employeeSearchTimer);
+      loadEmployees(1);
+    }));
+    panel.classList.remove('is-hidden');
+  }
+
+  function hideEmployeeSuggestions() {
+    document.getElementById('employeeSuggestions').classList.add('is-hidden');
+  }
+
+  /* ---------------------------------------------------------------- *
+   *  Publicar un paquete
+   * ---------------------------------------------------------------- */
+
+  function openImport() { resetImport(); document.getElementById('importModal').classList.remove('is-hidden'); }
+
+  function closeImport() {
+    if (state.importBusy) return;
+    document.getElementById('importModal').classList.add('is-hidden');
+    resetImport();
+  }
+
+  function resetImport() {
+    state.importContents = '';
+    state.importBusy = false;
+    if (state.importProgressTimer) clearInterval(state.importProgressTimer);
+    state.importProgressTimer = null;
+    document.getElementById('packageFileInput').value = '';
+    document.getElementById('importSelectView').classList.remove('is-hidden');
+    document.getElementById('importPreview').classList.add('is-hidden');
+    document.getElementById('importProgress').classList.add('is-hidden');
+    document.getElementById('importProgressBar').style.width = '0%';
+    document.getElementById('publishPackageButton').disabled = true;
+    document.getElementById('cancelImportButton').disabled = false;
+    document.getElementById('closeImportButton').disabled = false;
+  }
+
+  function choosePackage() {
+    if (!state.importBusy) document.getElementById('packageFileInput').click();
+  }
+
+  function readFileText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(new Error('No fue posible leer el archivo seleccionado.'));
+      reader.readAsText(file, 'utf-8');
+    });
+  }
+
+  async function readPackage(event) {
+    const file = event.target.files && event.target.files[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      if (file.size > 40 * 1024 * 1024) throw new Error('El paquete supera el límite de 40 MB.');
+      const contents = await readFileText(file);
+      const data = JSON.parse(contents);
+      if (data.formato !== 'cobranza-report-package' || Number(data.version) !== 1) {
+        throw new Error('Este archivo no es un paquete compatible de Cobranza.');
+      }
+      const summaryRows = data.hojas && data.hojas.Resumen && data.hojas.Resumen.filas;
+      if (!Array.isArray(summaryRows) || !summaryRows.length) {
+        throw new Error('El paquete no contiene el resumen del reporte.');
+      }
+      const summary = summaryRows[summaryRows.length - 1];
+      state.importContents = contents;
+      document.getElementById('packageFileName').textContent = file.name;
+      document.getElementById('packageMetrics').innerHTML = `
+        <article><small>Reporte</small><strong>Cobranza</strong></article>
+        <article><small>Periodo</small><strong>${escapeHtml(data.periodo || '—')}</strong></article>
+        <article><small>Fecha de corte</small><strong>${escapeHtml(data.fechaCorte || '—')}</strong></article>
+        <article><small>Colaboradores</small><strong>${integer(summary[3])}</strong></article>
+        <article><small>Asignaciones</small><strong>${integer(summary[4])}</strong></article>
+        <article><small>Avance</small><strong>${percent(summary[7])}</strong></article>`;
+      document.getElementById('importSelectView').classList.add('is-hidden');
+      document.getElementById('importPreview').classList.remove('is-hidden');
+      document.getElementById('publishPackageButton').disabled = false;
+    } catch (error) {
+      state.importContents = '';
+      showError(error);
+    }
+  }
+
+  function publishPackage() {
+    if (!state.importContents || state.importBusy) return;
+    state.importBusy = true;
+    ['publishPackageButton', 'cancelImportButton', 'closeImportButton']
+      .forEach((id) => { document.getElementById(id).disabled = true; });
+    document.getElementById('importProgress').classList.remove('is-hidden');
+
+    state.importProgressTimer = fakeProgress('importProgressBar', 'importProgressText',
+      ['Validando el paquete…', 'Actualizando las tablas…', 'Publicando el reporte…']);
+
+    google.script.run.withSuccessHandler((result) => {
+      finishProgress('importProgressBar', 'importProgressText', state.importProgressTimer, 'Actualización completada');
+      state.importProgressTimer = null;
+      setTimeout(() => {
+        state.importBusy = false;
+        document.getElementById('importModal').classList.add('is-hidden');
+        reloadDashboard(`Cobranza ${result.periodo} se publicó correctamente.`);
+        resetImport();
+      }, 500);
+    }).withFailureHandler((error) => {
+      clearInterval(state.importProgressTimer);
+      state.importProgressTimer = null;
+      state.importBusy = false;
+      document.getElementById('importProgressBar').style.width = '0%';
+      document.getElementById('importProgress').classList.add('is-hidden');
+      ['publishPackageButton', 'cancelImportButton', 'closeImportButton']
+        .forEach((id) => { document.getElementById(id).disabled = false; });
+      showError(error);
+    }).importarPaquete(state.importContents);
+  }
+
+  /* ---------------------------------------------------------------- *
+   *  Procesar el corte
+   * ---------------------------------------------------------------- */
+
+  function openProcess() {
+    document.getElementById('processLog').classList.add('is-hidden');
+    document.getElementById('processProgress').classList.add('is-hidden');
+    document.getElementById('processProgressBar').style.width = '0%';
+    document.getElementById('runProcessButton').disabled = false;
+    document.getElementById('processModal').classList.remove('is-hidden');
+  }
+
+  function closeProcess() {
+    if (state.processBusy) return;
+    document.getElementById('processModal').classList.add('is-hidden');
+  }
+
+  function runProcess() {
+    if (state.processBusy) return;
+    state.processBusy = true;
+    ['runProcessButton', 'cancelProcessButton', 'closeProcessButton']
+      .forEach((id) => { document.getElementById(id).disabled = true; });
+    document.getElementById('processProgress').classList.remove('is-hidden');
+    document.getElementById('processLog').classList.add('is-hidden');
+
+    // La ingesta tarda minutos y el servidor no puede reportar avance a media
+    // ejecución, así que la barra es una estimación honesta: se detiene en 88%
+    // hasta que la respuesta llega de verdad.
+    state.processProgressTimer = fakeProgress('processProgressBar', 'processProgressText',
+      ['Convirtiendo los archivos…', 'Leyendo las finalizaciones…', 'Calculando el corte…', 'Publicando…'], 2200);
+
+    google.script.run.withSuccessHandler((result) => {
+      finishProgress('processProgressBar', 'processProgressText', state.processProgressTimer, 'Corte publicado');
+      state.processProgressTimer = null;
+      state.processBusy = false;
+      renderProcessLog(result);
+      ['cancelProcessButton', 'closeProcessButton'].forEach((id) => { document.getElementById(id).disabled = false; });
+      document.getElementById('cancelProcessButton').textContent = 'Cerrar';
+      reloadDashboard(`Corte ${result.periodo} publicado en ${result.segundos}s.`);
+    }).withFailureHandler((error) => {
+      clearInterval(state.processProgressTimer);
+      state.processProgressTimer = null;
+      state.processBusy = false;
+      document.getElementById('processProgressBar').style.width = '0%';
+      document.getElementById('processProgress').classList.add('is-hidden');
+      ['runProcessButton', 'cancelProcessButton', 'closeProcessButton']
+        .forEach((id) => { document.getElementById(id).disabled = false; });
+      showError(error);
+    }).procesarCorteDesdeTablero({});
+  }
+
+  /** Los avisos del motor se enseñan siempre: publicar en silencio con una
+   *  fuente sin actualizar es peor que no publicar. */
+  function renderProcessLog(result) {
+    const log = document.getElementById('processLog');
+    const avisos = result.avisos || [];
+    log.innerHTML = `<b>${avisos.length ? `${avisos.length} aviso(s)` : 'Sin avisos'}</b>` +
+      (avisos.length ? avisos.map((aviso) => `<p>${escapeHtml(aviso)}</p>`).join('')
+                     : '<p>El corte se procesó sin observaciones.</p>');
+    log.classList.remove('is-hidden');
+  }
+
+  function fakeProgress(barId, textId, phrases, interval) {
+    const bar = document.getElementById(barId);
+    const text = document.getElementById(textId);
+    let progress = 12;
+    bar.style.width = `${progress}%`;
+    return setInterval(() => {
+      progress = Math.min(88, progress + Math.max(1, Math.round((90 - progress) / 8)));
+      bar.style.width = `${progress}%`;
+      text.textContent = phrases[Math.min(phrases.length - 1, Math.floor(progress / (90 / phrases.length)))];
+    }, interval || 550);
+  }
+
+  function finishProgress(barId, textId, timer, message) {
+    clearInterval(timer);
+    document.getElementById(barId).style.width = '100%';
+    document.getElementById(textId).textContent = message;
+  }
+
+  function reloadDashboard(message) {
+    document.getElementById('loading').classList.remove('is-hidden');
+    document.getElementById('app').classList.add('is-hidden');
+    state.filteredOverview = null;
+    state.region = state.position = state.course = state.plan = '';
+    google.script.run.withSuccessHandler((data) => {
+      loadDashboard(data);
+      if (message) showMessage(message);
+    }).withFailureHandler(showFatalError).getDashboardData({});
+  }
+
+  /* ---------------------------------------------------------------- *
+   *  Selectores con búsqueda
+   * ---------------------------------------------------------------- */
+
+  function populateSelect(id, values, firstLabel) {
+    const select = document.getElementById(id);
+    select.innerHTML = `<option value="">${escapeHtml(firstLabel)}</option>`;
+    [...new Set(values.filter(Boolean))].forEach((value) => {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = value;
+      select.appendChild(option);
+    });
+    refreshCustomSelect(id);
+  }
+
+  function populateCourseSelect(rows) {
+    const select = document.getElementById('courseFilter');
+    select.innerHTML = '<option value="">Cursos</option>';
+    const seen = new Set();
+    rows.slice().sort((a, b) => String(a.curso).localeCompare(String(b.curso), 'es')).forEach((row) => {
+      const key = String(row.curso_clave || row.curso);
+      if (seen.has(key)) return;
+      seen.add(key);
+      const option = document.createElement('option');
+      option.value = key;
+      option.textContent = row.curso;
+      select.appendChild(option);
+    });
+    refreshCustomSelect('courseFilter');
+  }
+
+  function initializeCustomSelects() {
+    document.querySelectorAll('select').forEach((select) => {
+      if (select.dataset.customized === 'true') return;
+      select.dataset.customized = 'true';
+      select.classList.add('native-select');
+      const shell = document.createElement('div');
+      shell.className = 'custom-select';
+      shell.dataset.selectId = select.id;
+      shell.innerHTML = '<button class="custom-select-trigger" type="button" aria-haspopup="listbox" aria-expanded="false"><span></span><i class="custom-select-arrow" aria-hidden="true"></i></button><div class="custom-select-menu is-hidden"><input class="custom-select-search" type="search" placeholder="Buscar" autocomplete="off" aria-label="Buscar opción"><div class="custom-select-options" role="listbox"></div></div>';
+      select.insertAdjacentElement('afterend', shell);
+      shell.querySelector('.custom-select-trigger').addEventListener('click', () => toggleCustomSelect(shell));
+      shell.querySelector('.custom-select-search').addEventListener('input', (event) => renderCustomOptions(shell, event.target.value));
+      select.addEventListener('change', () => refreshCustomSelect(select.id));
+      refreshCustomSelect(select.id);
+    });
+  }
+
+  function refreshCustomSelect(id) {
+    const select = document.getElementById(id);
+    const shell = document.querySelector(`.custom-select[data-select-id="${id}"]`);
+    if (!select || !shell) return;
+    const selected = select.options[select.selectedIndex] || select.options[0];
+    shell.querySelector('.custom-select-trigger span').textContent = selected ? selected.textContent : '';
+    shell.querySelector('.custom-select-trigger').disabled = select.disabled;
+    shell.querySelector('.custom-select-search').classList.toggle('is-hidden', select.options.length <= 7);
+    renderCustomOptions(shell, '');
+  }
+
+  function toggleCustomSelect(shell) {
+    const select = document.getElementById(shell.dataset.selectId);
+    if (select.disabled) return;
+    const willOpen = !shell.classList.contains('is-open');
+    closeCustomSelects();
+    if (!willOpen) return;
+    shell.classList.add('is-open');
+    shell.querySelector('.custom-select-menu').classList.remove('is-hidden');
+    shell.querySelector('.custom-select-trigger').setAttribute('aria-expanded', 'true');
+    const search = shell.querySelector('.custom-select-search');
+    search.value = '';
+    renderCustomOptions(shell, '');
+    if (!search.classList.contains('is-hidden')) setTimeout(() => search.focus(), 0);
+  }
+
+  function closeCustomSelects() {
+    document.querySelectorAll('.custom-select.is-open').forEach((shell) => {
+      shell.classList.remove('is-open');
+      shell.querySelector('.custom-select-menu').classList.add('is-hidden');
+      shell.querySelector('.custom-select-trigger').setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  function renderCustomOptions(shell, query) {
+    const select = document.getElementById(shell.dataset.selectId);
+    const normalizedQuery = normalizeSearch(query);
+    const options = Array.from(select.options).filter((option) => !normalizedQuery || normalizeSearch(option.textContent).includes(normalizedQuery));
+    const container = shell.querySelector('.custom-select-options');
+    if (!options.length) {
+      container.innerHTML = '<div class="custom-select-empty">No hay coincidencias.</div>';
+      return;
+    }
+    container.innerHTML = options.map((option) =>
+      `<button class="custom-select-option${option.value === select.value ? ' is-selected' : ''}" type="button" role="option" aria-selected="${option.value === select.value}" data-value="${escapeHtml(option.value)}">${escapeHtml(option.textContent)}</button>`
+    ).join('');
+    container.querySelectorAll('.custom-select-option').forEach((button) => button.addEventListener('click', () => {
+      select.value = button.dataset.value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      closeCustomSelects();
+    }));
+  }
+
+  /* ---------------------------------------------------------------- *
+   *  Utilidades
+   * ---------------------------------------------------------------- */
+
+  function normalizeSearch(value) {
+    return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  }
+  function selectedCourseName() {
+    const row = (state.data.courses || []).find((item) => String(item.curso_clave || item.curso) === state.course);
+    return row ? row.curso : '';
+  }
+  function monthName(value) {
+    return ({'01':'Enero','02':'Febrero','03':'Marzo','04':'Abril','05':'Mayo','06':'Junio','07':'Julio','08':'Agosto','09':'Septiembre','10':'Octubre','11':'Noviembre','12':'Diciembre'})[value] || value;
+  }
+  function integer(value) { return new Intl.NumberFormat('es-MX', { maximumFractionDigits: 0 }).format(number(value)); }
+  function percent(value, digits = 1) { return new Intl.NumberFormat('es-MX', { style: 'percent', minimumFractionDigits: digits, maximumFractionDigits: digits }).format(number(value)); }
+  function number(value) { const parsed = Number(value); return Number.isFinite(parsed) ? parsed : 0; }
+  function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
+  function escapeHtml(value) { return String(value == null ? '' : value).replace(/[&<>'"]/g, (character) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[character])); }
+  function showFatalError(error) { document.getElementById('loading').innerHTML = `<strong>No pudimos abrir el reporte.</strong><p>${escapeHtml(error.message || error)}</p>`; }
+  function showError(error) { toastear(error.message || error); }
+  function showMessage(message) { toastear(message); }
+  function toastear(texto) {
+    const toast = document.getElementById('toast');
+    toast.textContent = texto;
+    toast.classList.add('is-visible');
+    setTimeout(() => toast.classList.remove('is-visible'), 6000);
+  }
+</script>

@@ -1,0 +1,492 @@
+<title>Instalar Tablero Cobranza</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --ground:#f7f8fb; --surface:#ffffff; --surface-2:#f1f3f9;
+    --ink:#081754; --body:#3b456b; --muted:#7480a6;
+    --line:#dbdfec; --line-soft:#e8ebf3;
+    --accent:#1c42e8; --accent-soft:#e7ecfd; --signal:#f0d224;
+    --crit:#a3320f; --crit-soft:#fbeae4;
+    --warn:#8a6100; --warn-soft:#fbf2dc;
+    --ok:#1a6b48; --ok-soft:#e3f2ea;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#080d20; --surface:#0f1631; --surface-2:#161e3d;
+      --ink:#e9ecf9; --body:#b6c0e0; --muted:#8290b8;
+      --line:#26305a; --line-soft:#1d2648;
+      --accent:#8aa4ff; --accent-soft:#1a2454; --signal:#f0d224;
+      --crit:#ff9d7a; --crit-soft:#341a12;
+      --warn:#e9c25f; --warn-soft:#2e2510;
+      --ok:#7fd6ab; --ok-soft:#11301f;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#080d20; --surface:#0f1631; --surface-2:#161e3d;
+    --ink:#e9ecf9; --body:#b6c0e0; --muted:#8290b8;
+    --line:#26305a; --line-soft:#1d2648;
+    --accent:#8aa4ff; --accent-soft:#1a2454; --signal:#f0d224;
+    --crit:#ff9d7a; --crit-soft:#341a12;
+    --warn:#e9c25f; --warn-soft:#2e2510;
+    --ok:#7fd6ab; --ok-soft:#11301f;
+  }
+
+  *{box-sizing:border-box;}
+  body{background:var(--ground);color:var(--body);
+    font-family:"Newsreader",Georgia,serif;font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased;}
+  h1,h2,h3,.ui{font-family:"Archivo","Helvetica Neue",Arial,sans-serif;}
+  .mono,code{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;}
+  a{color:var(--accent);}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px;}
+  @media (prefers-reduced-motion: reduce){*{transition:none!important;}}
+
+  .wrap{width:min(880px,calc(100% - 40px));margin:0 auto;}
+
+  /* ---------- cabecera ---------- */
+  header{background:var(--surface);border-bottom:1px solid var(--line);}
+  header .wrap{padding:44px 0 32px;}
+  .eyebrow{font-family:"Archivo",sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.17em;
+    text-transform:uppercase;color:var(--muted);margin:0 0 20px;}
+  .titulo{display:flex;align-items:flex-start;gap:20px;}
+  .titulo::before{content:"";flex:0 0 5px;align-self:stretch;background:var(--signal);border-radius:1px;}
+  h1{margin:0;color:var(--ink);font-size:clamp(34px,5.4vw,50px);font-weight:700;letter-spacing:-.045em;line-height:1.03;}
+  .sub{margin:18px 0 0;max-width:60ch;font-size:18px;}
+  .sub b{color:var(--ink);font-weight:600;}
+
+  /* ---------- barra de avance ---------- */
+  .avance{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line);}
+  .avance .wrap{display:flex;align-items:center;gap:16px;padding:12px 0;}
+  .avance-barra{flex:1;height:6px;border-radius:999px;background:var(--surface-2);overflow:hidden;}
+  .avance-barra b{display:block;height:100%;width:0;border-radius:999px;background:var(--signal);transition:width .25s ease;}
+  .avance-texto{font-family:"Archivo",sans-serif;font-size:11.5px;font-weight:600;color:var(--muted);
+    white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .reiniciar{border:0;background:transparent;color:var(--muted);font-family:"Archivo",sans-serif;
+    font-size:11px;cursor:pointer;text-decoration:underline;padding:4px;}
+  .reiniciar:hover{color:var(--ink);}
+
+  main{padding:12px 0 100px;}
+
+  /* ---------- pasos ---------- */
+  .paso{border-top:1px solid var(--line);padding:30px 0;display:grid;
+    grid-template-columns:34px minmax(0,1fr);gap:0 18px;align-items:start;}
+  .paso:last-of-type{border-bottom:1px solid var(--line);}
+  .marca{width:26px;height:26px;margin-top:2px;border:1.5px solid var(--line);border-radius:8px;
+    background:var(--surface);cursor:pointer;display:grid;place-items:center;padding:0;
+    color:transparent;font-size:15px;font-weight:700;transition:background .15s,border-color .15s,color .15s;}
+  .marca:hover{border-color:var(--muted);}
+  .marca[aria-checked="true"]{background:var(--ok);border-color:var(--ok);color:#fff;}
+  .paso.hecho h2,.paso.hecho .cuerpo{opacity:.5;}
+  .paso h2{margin:0 0 4px;color:var(--ink);font-size:20px;font-weight:600;letter-spacing:-.02em;}
+  .num{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:500;color:var(--accent);
+    letter-spacing:.08em;display:block;margin-bottom:6px;}
+  .cuerpo{transition:opacity .2s;}
+  .cuerpo p{margin:10px 0;max-width:64ch;}
+  .cuerpo ol,.cuerpo ul{max-width:64ch;padding-left:22px;margin:12px 0;}
+  .cuerpo li{margin-bottom:7px;}
+  strong{color:var(--ink);font-weight:600;}
+  code{font-size:.85em;background:var(--surface-2);padding:2px 6px;border-radius:4px;
+    color:var(--ink);border:1px solid var(--line-soft);}
+
+  /* ---------- ruta de menús ---------- */
+  .ruta{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;margin:12px 0;padding:9px 13px;
+    background:var(--surface);border:1px solid var(--line);border-radius:9px;
+    font-family:"Archivo",sans-serif;font-size:13px;color:var(--ink);}
+  .ruta i{color:var(--muted);font-style:normal;}
+
+  /* ---------- lista de archivos ---------- */
+  .archivos{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;
+    margin:14px 0;padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:10px;}
+  .archivos span{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink);}
+  .archivos span.html{color:var(--accent);}
+
+  /* ---------- avisos ---------- */
+  .nota{display:flex;gap:11px;margin:14px 0;padding:13px 15px;border-radius:9px;
+    font-size:15.5px;line-height:1.55;max-width:66ch;}
+  .nota span{flex:0 0 auto;font-weight:700;font-family:"Archivo",sans-serif;font-size:12px;
+    letter-spacing:.06em;padding-top:2px;}
+  .nota.ojo{background:var(--warn-soft);color:var(--warn);}
+  .nota.ojo strong{color:var(--warn);}
+  .nota.bien{background:var(--ok-soft);color:var(--ok);}
+  .nota.bien strong{color:var(--ok);}
+  .nota.dato{background:var(--accent-soft);color:var(--accent);}
+  .nota.dato strong{color:var(--accent);}
+
+  /* ---------- tablas ---------- */
+  .tabla{overflow-x:auto;margin:16px 0;border:1px solid var(--line);border-radius:9px;background:var(--surface);}
+  table{width:100%;border-collapse:collapse;font-family:"Archivo",sans-serif;font-size:13.5px;}
+  th{text-align:left;padding:11px 15px;background:var(--surface-2);color:var(--ink);font-weight:600;
+    font-size:10px;letter-spacing:.09em;text-transform:uppercase;border-bottom:1px solid var(--line);white-space:nowrap;}
+  td{padding:12px 15px;border-bottom:1px solid var(--line-soft);color:var(--body);vertical-align:top;line-height:1.5;}
+  tr:last-child td{border-bottom:0;}
+  td b{color:var(--ink);}
+  td .mono{font-size:12.5px;color:var(--ink);}
+
+  /* ---------- cierre ---------- */
+  .cierre{margin-top:56px;padding:28px 0 0;border-top:2px solid var(--ink);}
+  .cierre h3{margin:0 0 12px;color:var(--ink);font-size:21px;font-weight:600;letter-spacing:-.02em;}
+  footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--line-soft);
+    font-family:"Archivo",sans-serif;font-size:11.5px;color:var(--muted);}
+</style>
+
+<header>
+  <div class="wrap">
+    <p class="eyebrow">Universidad Corporativa · Coppel</p>
+    <div class="titulo"><h1>Instalar el tablero<br>de Cobranza</h1></div>
+    <p class="sub">
+      Una decisión previa y once pasos, de proyecto vacío a tablero publicado y corriendo solo. Todo el código está en
+      la carpeta <code>src/</code> del repositorio. <b>Marca cada paso conforme lo termines</b> —
+      esta página recuerda dónde te quedaste.
+    </p>
+  </div>
+</header>
+
+<div class="avance">
+  <div class="wrap">
+    <div class="avance-barra"><b id="barra"></b></div>
+    <span class="avance-texto" id="cuenta">0 de 12</span>
+    <button class="reiniciar" id="reiniciar" type="button">Reiniciar</button>
+  </div>
+</div>
+
+<main class="wrap">
+
+  <!-- 0 -->
+  <div class="paso" data-paso="0">
+    <button class="marca" role="checkbox" aria-checked="false" aria-label="Marcar paso como hecho">✓</button>
+    <div>
+      <span class="num">ANTES DE EMPEZAR</span>
+      <h2>Elige la cuenta dueña</h2>
+      <div class="cuerpo">
+        <p>
+          El tablero se despliega <strong>ejecutándose como la cuenta que lo publica</strong>: es esa
+          cuenta la que lee los archivos de Drive y escribe las hojas. Si un día se da de baja, el
+          tablero deja de funcionar.
+        </p>
+        <div class="nota ojo"><span>OJO</span><div>
+          Usa una <strong>cuenta de área</strong>, no la personal de quien instala. Cambiarla después
+          significa volver a hacer toda esta instalación.
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1 -->
+  <div class="paso" data-paso="1">
+    <button class="marca" role="checkbox" aria-checked="false" aria-label="Marcar paso como hecho">✓</button>
+    <div>
+      <span class="num">PASO 1</span>
+      <h2>Crea el proyecto</h2>
+      <div class="cuerpo">
+        <p>Entra a <a href="https://script.google.com" target="_blank" rel="noopener">script.google.com</a> con la cuenta dueña.</p>
+        <div class="ruta"><b>Nuevo proyecto</b><i>→</i>ponle de nombre <b>Tablero Cobranza</b></div>
+        <p>
+          Viene con un archivo <code>Código.gs</code> de ejemplo. Bórralo: da clic en los tres puntos
+          junto a su nombre y elige <strong>Eliminar</strong>.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="paso" data-paso="2">
+    <button class="marca" role="checkbox" aria-checked="false" aria-label="Marcar paso como hecho">✓</button>
+    <div>
+      <span class="num">PASO 2</span>
+      <h2>Pega el manifiesto</h2>
+      <div class="cuerpo">
+        <p>Es lo que declara los permisos y enciende la API de Drive. Va primero porque de él dependen los demás pasos.</p>
+        <div class="ruta"><b>Configuración del proyecto</b><i>→</i>marca <b>Mostrar el archivo de manifiesto "appsscript.json" en el editor</b></div>
+        <p>
+          Vuelve al editor, abre <code>appsscript.json</code>, borra todo lo que tenga y pega el
+          contenido de <code>src/appsscript.json</code>.
+        </p>
+        <div class="nota dato"><span>REVISA</span><div>
+          En el panel izquierdo, junto a <strong>Servicios</strong>, debe aparecer
+          <strong>Drive API</strong>. Si no, dale al <strong>+</strong>, busca <em>Drive API</em>,
+          deja la versión <strong>v2</strong> y agrégala. Sin eso el motor no puede leer los
+          <code>.xlsx</code>.
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="paso" data-paso="3">
+    <button class="marca" role="checkbox" aria-checked="false" aria-label="Marcar paso como hecho">✓</button>
+    <div>
+      <span class="num">PASO 3</span>
+      <h2>Copia los 16 archivos de código</h2>
+      <div class="cuerpo">
+        <p>Por cada uno: <strong>+</strong> junto a «Archivos» <span class="mono">→</span> <strong>Secuencia de comandos</strong> <span class="mono">→</span> escribe el nombre <strong>sin la extensión</strong> <span class="mono">→</span> pega el contenido del archivo del repositorio.</p>
+        <div class="archivos">
+          <span>00_Config</span><span>01_Esquema</span><span>02_Semillas</span><span>03_Almacen</span>
+          <span>04_Catalogos</span><span>05_Acceso</span><span>06_Bitacora</span><span>07_Paquete</span>
+          <span>10_Util</span><span>20_Fuentes</span><span>30_Motor</span><span>31_Opciones</span>
+          <span>40_Proceso</span><span>50_Historico</span><span>60_Operacion</span><span>90_WebApp</span>
+        </div>
+        <div class="nota bien"><span>TRANQUILO</span><div>
+          <strong>El orden no importa.</strong> Se verificó que ninguna constante de un archivo
+          dependa de otro al cargarse, así que puedes pegarlos en cualquier orden sin que truene.
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="paso" data-paso="4">
+    <button class="marca" role="checkbox" aria-checked="false" aria-label="Marcar paso como hecho">✓</button>
+    <div>
+      <span class="num">PASO 4</span>
+      <h2>Copia los 3 archivos de la interfaz</h2>
+      <div class="cuerpo">
+        <p>Estos van como <strong>HTML</strong>, no como secuencia de comandos: <strong>+</strong> <span class="mono">→</span> <strong>HTML</strong>.</p>
+        <div class="archivos">
+          <span class="html">Index</span><span class="html">JavaScript</span><span class="html">Stylesheet</span>
+        </div>
+        <div class="nota ojo"><span>OJO</span><div>
+          Dos cosas que salen mal aquí. Primero: el nombre va <strong>sin <code>.html</code></strong>
+          — Apps Script se lo agrega solo, y si lo escribes queda <code>Index.html.html</code> y el
+          tablero no abre. Segundo: cada archivo HTML nuevo viene con contenido de ejemplo;
+          <strong>bórralo todo</strong> antes de pegar.
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="paso" data-paso="5">
+    <button class="marca" role="checkbox" aria-checked="false" aria-label="Marcar paso como hecho">✓</button>
+    <div>
+      <span class="num">PASO 5</span>
+      <h2>Corre <code>instalar</code></h2>
+      <div class="cuerpo">
+        <p>Crea las tres hojas de cálculo, las carpetas de Drive, siembra los catálogos y <strong>te da de alta como administrador</strong>.</p>
+        <div class="ruta">Elige <b>instalar</b> en el desplegable de funciones<i>→</i><b>Ejecutar</b></div>
+        <p>
+          Google va a pedir permisos: <strong>Revisar permisos</strong>, elige la cuenta, y si sale
+          «Google no ha verificado esta aplicación», entra a <strong>Configuración avanzada</strong>
+          <span class="mono">→</span> <strong>Ir a Tablero Cobranza</strong>. Es tu propio proyecto;
+          esa pantalla sale porque no está publicado en el Marketplace.
+        </p>
+        <p>
+          Cuando termine, abre el <strong>registro de ejecución</strong> abajo: trae los enlaces a
+          las tres hojas y a las dos carpetas. <strong>Guárdalos.</strong>
+        </p>
+        <div class="nota bien"><span>SEGURO</span><div>
+          <code>instalar</code> se puede volver a correr sin miedo: no borra nada, y si a una pestaña
+          le falta una columna lo reporta en vez de pisarla.
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6 -->
+  <div class="paso" data-paso="6">
+    <button class="marca" role="checkbox" aria-checked="false" aria-label="Marcar paso como hecho">✓</button>
+    <div>
+      <span class="num">PASO 6</span>
+      <h2>Publica la aplicación web</h2>
+      <div class="cuerpo">
+        <div class="ruta"><b>Implementar</b><i>→</i><b>Nueva implementación</b><i>→</i>engranaje<i>→</i><b>Aplicación web</b></div>
+        <div class="tabla"><table>
+          <thead><tr><th>Campo</th><th>Qué poner</th></tr></thead>
+          <tbody>
+            <tr><td><b>Descripción</b></td><td>Tablero Cobranza</td></tr>
+            <tr><td><b>Ejecutar como</b></td><td>Yo <span class="mono">(la cuenta dueña)</span></td></tr>
+            <tr><td><b>Quién tiene acceso</b></td><td>Cualquier usuario de Coppel</td></tr>
+          </tbody>
+        </table></div>
+        <p><strong>Copia la URL</strong> que te da. Esa es la que se comparte con el área.</p>
+        <div class="nota dato"><span>DESPUÉS</span><div>
+          Cada vez que cambies el código, hay que crear una <strong>nueva implementación</strong> o
+          editar la existente para que suba la versión. Editar el código no actualiza el tablero solo.
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7 -->
+  <div class="paso" data-paso="7">
+    <button class="marca" role="checkbox" aria-checked="false" aria-label="Marcar paso como hecho">✓</button>
+    <div>
+      <span class="num">PASO 7</span>
+      <h2>Sube los archivos del mes</h2>
+      <div class="cuerpo">
+        <p>Abre la carpeta <strong>Datos crudos</strong> (el enlace del paso 5) y deja ahí los cinco archivos:</p>
+        <div class="tabla"><table>
+          <thead><tr><th>Archivo</th><th>Quién lo tiene</th></tr></thead>
+          <tbody>
+            <tr><td><b>Detalle Colaborador</b></td><td>RRHH</td></tr>
+            <tr><td><b>Planta de Cobranza por Posiciones</b></td><td>Cobranza · a más tardar el día 10</td></tr>
+            <tr><td><b>PDT de Operación</b></td><td>Universidad Corporativa</td></tr>
+            <tr><td><b>PDT Gerencial</b></td><td>Universidad Corporativa</td></tr>
+            <tr><td><b>Finalizaciones</b> <span class="mono">Cobranza P1, P2…</span></td><td>Universidad Corporativa</td></tr>
+          </tbody>
+        </table></div>
+        <div class="nota ojo"><span>ANTES</span><div>
+          Pasa las finalizaciones por <code>pipeline/celda_aligerar_csv.py</code> en el Colab: las
+          deja en <strong>15 MB en vez de 117</strong>, sin perder nada. Los archivos muy grandes
+          hacen que la conversión a hoja de cálculo falle.
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8 -->
+  <div class="paso" data-paso="8">
+    <button class="marca" role="checkbox" aria-checked="false" aria-label="Marcar paso como hecho">✓</button>
+    <div>
+      <span class="num">PASO 8</span>
+      <h2>Ensaya el corte antes de publicar nada</h2>
+      <div class="cuerpo">
+        <p>Calcula todo <strong>sin escribir</strong>. Es la única forma de ver un problema antes que el área.</p>
+        <div class="ruta">Elige <b>ensayarCorte</b><i>→</i><b>Ejecutar</b><i>→</i>tarda varios minutos</div>
+        <p>En el registro de ejecución, revisa tres cosas:</p>
+        <ul>
+          <li><strong>El avance.</strong> Sobre el corte de agosto debe dar cerca de <strong>84.8%</strong>. Muy lejos de ahí, algo va mal.</li>
+          <li><strong><code>conciliación: correcta</code>.</strong> Si dice INCORRECTA, <strong>no publiques</strong>.</li>
+          <li><strong>Los avisos.</strong> Cada uno dice qué pasó y qué hacer. Los normales están en el manual de operación.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9 -->
+  <div class="paso" data-paso="9">
+    <button class="marca" role="checkbox" aria-checked="false" aria-label="Marcar paso como hecho">✓</button>
+    <div>
+      <span class="num">PASO 9</span>
+      <h2>Publica el primer corte</h2>
+      <div class="cuerpo">
+        <p>
+          Abre la URL del paso 6. Como no hay nada publicado, vas a ver la pantalla de bienvenida con
+          el botón <strong>Procesar corte</strong>. Dale.
+        </p>
+        <p>
+          Vuelve a leer los archivos y publica. Tarda lo mismo que el ensayo. Al terminar, el tablero
+          se recarga solo con los datos.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10 -->
+  <div class="paso" data-paso="10">
+    <button class="marca" role="checkbox" aria-checked="false" aria-label="Marcar paso como hecho">✓</button>
+    <div>
+      <span class="num">PASO 10</span>
+      <h2>Déjalo corriendo solo</h2>
+      <div class="cuerpo">
+        <div class="ruta">Elige <b>automatizar</b><i>→</i><b>Ejecutar</b></div>
+        <p>Deja tres cosas puestas:</p>
+        <ul>
+          <li><strong>Día 11, 7:00</strong> — revisa que los archivos estén. Avisa por correo solo si falta algo.</li>
+          <li><strong>Día 12, 6:00</strong> — procesa y publica. Manda correo con las cifras.</li>
+          <li><strong>Menú «Cobranza»</strong> en la hoja de Catálogos, para que el área aplique sus cambios sin entrar aquí.</li>
+        </ul>
+        <p>Google va a pedir un permiso más, el de crear disparadores y mandar correo.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 11 -->
+  <div class="paso" data-paso="11">
+    <button class="marca" role="checkbox" aria-checked="false" aria-label="Marcar paso como hecho">✓</button>
+    <div>
+      <span class="num">PASO 11</span>
+      <h2>Da de alta a los demás</h2>
+      <div class="cuerpo">
+        <p>
+          Abre <code>COB · Catálogos</code>, pestaña <strong>Administradores</strong>, y agrega un
+          renglón por cada persona que deba poder publicar. Después: menú
+          <strong>Cobranza → Aplicar cambios de los catálogos</strong>.
+        </p>
+        <div class="nota ojo"><span>MÍNIMO</span><div>
+          <strong>Que haya al menos dos.</strong> Con uno solo, el día que esa persona no esté, nadie
+          puede publicar el corte.
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- cierre -->
+  <div class="cierre">
+    <h3>Si algo se atora</h3>
+    <p>
+      Corre <code>diagnostico()</code> desde el editor. Junta en una pantalla la instalación, el
+      último corte, el histórico, los archivos crudos y los disparadores.
+    </p>
+    <div class="tabla"><table>
+      <thead><tr><th>Lo que ves</th><th>Qué hacer</th></tr></thead>
+      <tbody>
+        <tr><td><b>Configuración pendiente. Ejecuta la función instalar</b></td><td>Se saltó el paso 5, o el manifiesto no tenía los permisos. Repite 2 y 5</td></tr>
+        <tr><td><b>Drive is not defined</b></td><td>Falta la API de Drive. Vuelve al paso 2</td></tr>
+        <tr><td><b>No encontré ningún archivo que combine con…</b></td><td>El archivo no está en <em>Datos crudos</em>, o cambió de nombre. Revisa la pestaña <code>Fuentes</code> del catálogo</td></tr>
+        <tr><td><b>No se pudo convertir … a hoja de cálculo</b></td><td>Archivo demasiado grande. Pásalo por <code>celda_aligerar_csv.py</code></td></tr>
+        <tr><td><b>Tu cuenta no tiene permiso para publicar</b></td><td>No estás en <code>Administradores</code>. Corre <code>agregarAdministrador("tu@coppel.com")</code></td></tr>
+        <tr><td><b>El tablero abre en blanco</b></td><td>Casi siempre un HTML con el nombre mal. Revisa que sean <code>Index</code>, <code>JavaScript</code> y <code>Stylesheet</code>, sin <code>.html</code></td></tr>
+        <tr><td><b>Se acabó el tiempo de ejecución</b></td><td>Vuelve a lanzarlo: las conversiones ya hechas se reutilizan y el segundo intento es mucho más rápido</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3 style="margin-top:34px">Y después</h3>
+    <p>
+      El día a día está en <code>docs/05-operacion.md</code>: el calendario del mes, cómo cambiar una
+      regla de negocio sin tocar código, y qué avisos son normales cada mes.
+    </p>
+  </div>
+
+  <footer>
+    Tablero de avance de capacitación · Cobranza · Universidad Corporativa Coppel.
+    El progreso de esta lista se guarda solo en este navegador.
+  </footer>
+</main>
+
+<script>
+  const LLAVE = 'cobranza-instalacion-v1';
+  const pasos = [...document.querySelectorAll('.paso')];
+
+  function leer() {
+    try { return JSON.parse(localStorage.getItem(LLAVE) || '[]'); }
+    catch (e) { return []; }
+  }
+
+  function guardar(hechos) {
+    try { localStorage.setItem(LLAVE, JSON.stringify(hechos)); }
+    catch (e) { /* modo privado o cookies bloqueadas: la lista sigue funcionando, solo no recuerda */ }
+  }
+
+  function pintar() {
+    const hechos = leer();
+    let cuenta = 0;
+    pasos.forEach((paso) => {
+      const hecho = hechos.indexOf(paso.dataset.paso) !== -1;
+      paso.classList.toggle('hecho', hecho);
+      paso.querySelector('.marca').setAttribute('aria-checked', hecho ? 'true' : 'false');
+      if (hecho) cuenta += 1;
+    });
+    document.getElementById('barra').style.width = `${(cuenta / pasos.length) * 100}%`;
+    document.getElementById('cuenta').textContent =
+      cuenta === pasos.length ? `¡Listo! ${cuenta} de ${pasos.length}` : `${cuenta} de ${pasos.length}`;
+  }
+
+  pasos.forEach((paso) => {
+    paso.querySelector('.marca').addEventListener('click', () => {
+      const id = paso.dataset.paso;
+      const hechos = leer();
+      const i = hechos.indexOf(id);
+      if (i === -1) hechos.push(id); else hechos.splice(i, 1);
+      guardar(hechos);
+      pintar();
+    });
+  });
+
+  document.getElementById('reiniciar').addEventListener('click', () => {
+    guardar([]);
+    pintar();
+  });
+
+  pintar();
+</script>

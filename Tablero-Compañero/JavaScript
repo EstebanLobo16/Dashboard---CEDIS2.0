@@ -1,0 +1,556 @@
+<script>
+  const state = { data: null, report: '', cutoffDate: '', filteredOverview: null, period: '', region: '', position: '', course: '', overviewRequest: 0, employeeRequest: 0, employeeSearchTimer: null, regionsExpanded: false, coursesExpanded: false, employeePage: 1, employeeTotalPages: 1, importContents: '', importBusy: false, importProgressTimer: null };
+
+  document.addEventListener('DOMContentLoaded', initialize);
+
+  function initialize() {
+    initializeCustomSelects();
+    bindControls();
+    google.script.run.withSuccessHandler(loadDashboard).withFailureHandler(showFatalError).getDashboardData();
+  }
+
+  function loadDashboard(data) {
+    const reportChanged = Boolean(state.report && state.report !== data.report);
+    state.data = data;
+    state.report = data.report;
+    state.cutoffDate = String((data.summary && data.summary.fecha_corte) || '');
+    if (reportChanged) {
+      state.region = ''; state.position = ''; state.course = ''; state.filteredOverview = null;
+      state.regionsExpanded = false; state.coursesExpanded = false;
+      document.getElementById('employeeSearch').value = '';
+      if (peopleOpen()) closePeople();
+    }
+    document.getElementById('headerReportName').textContent = data.reportName;
+    document.getElementById('summaryReportName').textContent = data.reportName;
+    document.getElementById('peopleReportName').textContent = data.reportName;
+    document.getElementById('emptyReportName').textContent = data.reportName;
+    document.getElementById('importTitle').textContent = `${data.empty ? 'Cargar' : 'Actualizar'} ${data.reportName}`;
+    const reportSelect = document.getElementById('reportFilter');
+    reportSelect.innerHTML = (data.availableReports || []).map((report) =>
+      `<option value="${escapeHtml(report.key)}" data-url="${escapeHtml(report.url || '')}"${report.key === data.report ? ' selected' : ''}>${escapeHtml(report.name)}</option>`
+    ).join('');
+    refreshCustomSelect('reportFilter');
+    const canUpdate = data.canUpdate !== false;
+    const updateButton = document.getElementById('updateDataButton');
+    updateButton.classList.toggle('is-hidden', !canUpdate);
+    updateButton.textContent = data.empty ? 'Cargar datos' : 'Actualizar datos';
+    document.getElementById('emptyUpdateDataButton').classList.toggle('is-hidden', !canUpdate);
+    document.getElementById('emptyNoAccess').classList.toggle('is-hidden', canUpdate);
+    document.getElementById('emptyView').classList.toggle('is-hidden', !data.empty);
+    document.getElementById('floatingToolbarFrame').classList.toggle('is-hidden', data.empty);
+    document.getElementById('summaryView').classList.toggle('is-hidden', data.empty);
+    document.getElementById('peopleView').classList.add('is-hidden');
+    if (data.empty) {
+      state.period = '';
+      document.getElementById('framePeriod').textContent = 'Sin datos publicados';
+      document.getElementById('loading').classList.add('is-hidden');
+      document.getElementById('app').classList.remove('is-hidden');
+      return;
+    }
+    const period = String(data.summary.periodo || '2026-07');
+    state.period = period;
+    document.getElementById('framePeriod').textContent = `Avance · ${period}`;
+    document.getElementById('yearFilter').innerHTML = `<option>${escapeHtml(period.slice(0, 4))}</option>`;
+    document.getElementById('monthFilter').innerHTML = `<option>${monthName(period.slice(5, 7))}</option>`;
+    refreshCustomSelect('yearFilter');
+    refreshCustomSelect('monthFilter');
+    const cutoffLabel = state.cutoffDate || period;
+    document.getElementById('cutoffText').textContent = `Fecha de corte ${cutoffLabel}.`;
+    document.getElementById('peopleCutoffText').textContent = `Fecha de corte ${cutoffLabel}.`;
+    populateSelect('regionFilter', data.regions.map((row) => row.region).sort(), 'Todos');
+    populateSelect('positionFilter', data.positions || [], 'Puestos');
+    populateCourseSelect(data.courses);
+    renderAll();
+    document.getElementById('loading').classList.add('is-hidden');
+    document.getElementById('app').classList.remove('is-hidden');
+  }
+
+  function renderAll() {
+    const totals = selectedTotals();
+    renderKpis(totals);
+    renderMonthly(totals.avance);
+    renderRanking();
+    renderCourses();
+  }
+
+  function selectedTotals() {
+    if (state.filteredOverview) return state.filteredOverview.totals;
+    const periodRows = state.data.regions.filter((row) => !state.period || String(row.periodo || '') === state.period);
+    const rows = state.region ? periodRows.filter((row) => row.region === state.region) : periodRows;
+    const totals = rows.reduce((result, row) => {
+      result.colaboradores += number(row.colaboradores); result.asignados += number(row.cursos_asignados);
+      result.completados += number(row.cursos_completados); result.pendientes += number(row.cursos_pendientes); return result;
+    }, { colaboradores: 0, asignados: 0, completados: 0, pendientes: 0 });
+    totals.avance = totals.asignados ? totals.completados / totals.asignados : 0;
+    return totals;
+  }
+
+  function renderKpis(totals) {
+    document.getElementById('kpiGrid').innerHTML = `
+      <article><span>Avance total</span><strong>${percent(totals.avance)}</strong><small>${integer(totals.completados)} completados</small></article>
+      <article><span>Total asignado</span><strong>${integer(totals.asignados)}</strong><small>${integer(totals.colaboradores)} colaboradores</small></article>
+      <article><span>Pendientes</span><strong>${integer(totals.pendientes)}</strong><small>${percent(1 - totals.avance)} del total</small></article>`;
+  }
+
+  function renderMonthly(progress) {
+    document.getElementById('monthlyValue').textContent = percent(progress);
+    document.getElementById('monthlyChart').innerHTML = `<div class="month-column"><em>${percent(progress, 0)}</em><div style="height:${Math.max(4, progress * 100)}%"></div><small>Jul</small></div>`;
+  }
+
+  function renderRanking() {
+    const source = state.filteredOverview
+      ? state.filteredOverview.regions
+      : state.data.regions.filter((row) => !state.period || String(row.periodo || '') === state.period);
+    const rows = (state.region ? source.filter((row) => row.region === state.region) : source)
+      .slice().sort((a, b) => number(b.avance) - number(a.avance));
+    const visible = state.regionsExpanded ? rows : rows.slice(0, 5);
+    document.getElementById('regionRanking').innerHTML = visible.map((row, index) => `<div class="rank-row"><b>${String(index + 1).padStart(2, '0')}</b><span>${escapeHtml(row.region)}</span><strong>${percent(row.avance)}</strong></div>`).join('');
+    configureMoreButton('regionsMore', rows.length, 5, state.regionsExpanded);
+  }
+
+  function renderCourses() {
+    let rows = (state.filteredOverview ? state.filteredOverview.courses : state.data.courses)
+      .filter((row) => state.filteredOverview || !state.period || String(row.periodo || '') === state.period)
+      .slice().sort((a, b) => number(b.avance) - number(a.avance));
+    if (state.course) rows = rows.filter((row) => String(row.curso_clave || row.curso) === state.course);
+    const visible = state.coursesExpanded ? rows : rows.slice(0, 7);
+    document.getElementById('courseProgress').innerHTML = visible.map((row) => `<div class="course-row"><span><strong>${escapeHtml(row.curso)}</strong><small>${integer(row.completados)} de ${integer(row.asignados)}</small></span><i><b style="width:${clamp(number(row.avance) * 100, 0, 100)}%"></b></i><em>${percent(row.avance)}</em></div>`).join('');
+    configureMoreButton('coursesMore', rows.length, 7, state.coursesExpanded);
+  }
+
+  function configureMoreButton(id, total, limit, expanded) {
+    const button = document.getElementById(id);
+    button.classList.toggle('is-hidden', total <= limit);
+    button.innerHTML = `<span>${expanded ? 'Mostrar menos' : `Ver ${total - limit} más`}</span><span class="more-glyph">${expanded ? '−' : '+'}</span>`;
+  }
+
+  function bindControls() {
+    document.getElementById('reportFilter').addEventListener('change', (event) => switchReport(event.target.value));
+    document.getElementById('regionFilter').addEventListener('change', (event) => { state.region = event.target.value; state.regionsExpanded = false; refreshOverview(); if (peopleOpen()) loadEmployees(1); });
+    document.getElementById('positionFilter').addEventListener('change', (event) => { state.position = event.target.value; state.regionsExpanded = false; refreshOverview(); if (peopleOpen()) loadEmployees(1); });
+    document.getElementById('courseFilter').addEventListener('change', (event) => { state.course = event.target.value; state.coursesExpanded = false; state.regionsExpanded = false; refreshOverview(); if (peopleOpen()) loadEmployees(1); });
+    document.getElementById('regionsMore').addEventListener('click', () => { state.regionsExpanded = !state.regionsExpanded; renderRanking(); });
+    document.getElementById('coursesMore').addEventListener('click', () => { state.coursesExpanded = !state.coursesExpanded; renderCourses(); });
+    document.getElementById('peopleToggle').addEventListener('click', openPeople);
+    document.getElementById('toolbarClose').addEventListener('click', closePeople);
+    document.getElementById('employeeSearch').addEventListener('input', () => {
+      clearTimeout(state.employeeSearchTimer);
+      state.employeeRequest += 1;
+      showEmployeesSkeleton();
+      showSuggestionLoading();
+      state.employeeSearchTimer = setTimeout(() => { if (peopleOpen()) loadEmployees(1); }, 420);
+    });
+    document.getElementById('employeeSearch').addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        hideEmployeeSuggestions();
+        return;
+      }
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      clearTimeout(state.employeeSearchTimer);
+      loadEmployees(1);
+    });
+    document.getElementById('previousPage').addEventListener('click', () => loadEmployees(state.employeePage - 1));
+    document.getElementById('nextPage').addEventListener('click', () => loadEmployees(state.employeePage + 1));
+    document.getElementById('updateDataButton').addEventListener('click', openImport);
+    document.getElementById('emptyUpdateDataButton').addEventListener('click', openImport);
+    document.getElementById('choosePackageButton').addEventListener('click', choosePackage);
+    document.getElementById('changePackageButton').addEventListener('click', choosePackage);
+    document.getElementById('packageFileInput').addEventListener('change', readPackage);
+    document.getElementById('publishPackageButton').addEventListener('click', publishPackage);
+    document.getElementById('closeImportButton').addEventListener('click', closeImport);
+    document.getElementById('cancelImportButton').addEventListener('click', closeImport);
+    document.querySelector('[data-close-import]').addEventListener('click', closeImport);
+    document.addEventListener('click', (event) => {
+      if (!event.target.closest('.custom-select')) closeCustomSelects();
+      if (!event.target.closest('#toolbarSearch')) hideEmployeeSuggestions();
+    });
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeCustomSelects(); });
+  }
+
+  function switchReport(report) {
+    const target = (state.data.availableReports || []).find((item) => item.key === report);
+    if (!target || target.key === state.report) return;
+    if (!target.url) {
+      document.getElementById('reportFilter').value = state.report;
+      refreshCustomSelect('reportFilter');
+      showError(`El enlace de ${target ? target.name : report} todavía no está configurado.`);
+      return;
+    }
+    state.overviewRequest += 1;
+    state.employeeRequest += 1;
+    document.getElementById('loading').innerHTML = `<div class="loader-mark"><span></span><span></span><span></span></div><p>Abriendo ${escapeHtml(target.name)}…</p>`;
+    document.getElementById('loading').classList.remove('is-hidden');
+    document.getElementById('app').classList.add('is-hidden');
+    window.open(target.url, '_top');
+  }
+
+  function refreshOverview() {
+    if (!state.region && !state.position && !state.course) {
+      state.overviewRequest += 1;
+      state.filteredOverview = null;
+      document.getElementById('summaryView').removeAttribute('aria-busy');
+      renderAll();
+      return;
+    }
+    const request = ++state.overviewRequest;
+    showOverviewSkeleton();
+    google.script.run.withSuccessHandler((result) => {
+      if (request !== state.overviewRequest) return;
+      state.filteredOverview = result;
+      document.getElementById('summaryView').removeAttribute('aria-busy');
+      renderAll();
+    }).withFailureHandler((error) => {
+      if (request !== state.overviewRequest) return;
+      document.getElementById('summaryView').removeAttribute('aria-busy');
+      showOverviewFailure();
+      showError(error);
+    }).getFilteredOverview({
+      report: state.report, period: state.period, cutoffDate: state.cutoffDate,
+      region: state.region, position: state.position,
+      course: state.course,
+    });
+  }
+
+  function showOverviewSkeleton() {
+    document.getElementById('summaryView').setAttribute('aria-busy', 'true');
+    document.getElementById('kpiGrid').innerHTML = Array.from({length: 3}, () => `
+      <article class="skeleton-card"><span class="skeleton-line short"></span><strong class="skeleton-line value"></strong><small class="skeleton-line medium"></small></article>`).join('');
+    document.getElementById('monthlyValue').innerHTML = '<span class="skeleton-line tiny"></span>';
+    document.getElementById('monthlyChart').innerHTML = '<div class="skeleton-chart skeleton-shape"></div>';
+    document.getElementById('regionRanking').innerHTML = Array.from({length: 5}, () => '<div class="skeleton-rank"><i class="skeleton-line tiny"></i><i class="skeleton-line medium"></i><i class="skeleton-line short"></i></div>').join('');
+    document.getElementById('courseProgress').innerHTML = Array.from({length: 5}, () => '<div class="skeleton-course"><span><i class="skeleton-line medium"></i><i class="skeleton-line short"></i></span><i class="skeleton-line wide"></i><i class="skeleton-line tiny"></i></div>').join('');
+    document.getElementById('regionsMore').classList.add('is-hidden');
+    document.getElementById('coursesMore').classList.add('is-hidden');
+  }
+
+  function showOverviewFailure() {
+    document.getElementById('kpiGrid').innerHTML = '<div class="inline-state">No fue posible actualizar los indicadores.</div>';
+    document.getElementById('monthlyValue').textContent = '—';
+    document.getElementById('monthlyChart').innerHTML = '<div class="inline-state">Sin resultados</div>';
+    document.getElementById('regionRanking').innerHTML = '<div class="inline-state">Sin resultados</div>';
+    document.getElementById('courseProgress').innerHTML = '<div class="inline-state">Sin resultados</div>';
+  }
+
+  function openPeople() {
+    document.getElementById('summaryView').classList.add('is-hidden'); document.getElementById('peopleView').classList.remove('is-hidden');
+    document.getElementById('reportTitle').textContent = 'Detalle por colaborador'; document.getElementById('sheetToolbar').classList.add('people');
+    document.querySelectorAll('.period-filter').forEach((element) => element.classList.add('is-hidden'));
+    document.getElementById('toolbarSearch').classList.remove('is-hidden'); document.getElementById('peopleToggle').classList.add('is-hidden'); document.getElementById('toolbarClose').classList.remove('is-hidden');
+    loadEmployees(1);
+  }
+  function closePeople() {
+    clearTimeout(state.employeeSearchTimer);
+    state.employeeRequest += 1;
+    document.getElementById('peopleView').classList.add('is-hidden'); document.getElementById('summaryView').classList.remove('is-hidden');
+    document.getElementById('reportTitle').textContent = 'Reporte de capacitación'; document.getElementById('sheetToolbar').classList.remove('people');
+    document.querySelectorAll('.period-filter').forEach((element) => element.classList.remove('is-hidden'));
+    document.getElementById('toolbarSearch').classList.add('is-hidden'); document.getElementById('peopleToggle').classList.remove('is-hidden'); document.getElementById('toolbarClose').classList.add('is-hidden');
+    hideEmployeeSuggestions();
+  }
+  function peopleOpen() { return !document.getElementById('peopleView').classList.contains('is-hidden'); }
+
+  function loadEmployees(page) {
+    const request = ++state.employeeRequest;
+    showEmployeesSkeleton();
+    google.script.run.withSuccessHandler((result) => {
+      if (request !== state.employeeRequest) return;
+      renderEmployeesTable(result);
+      renderEmployeeSuggestions(result.rows || []);
+    }).withFailureHandler((error) => {
+      if (request !== state.employeeRequest) return;
+      showEmployeesFailure();
+      hideEmployeeSuggestions();
+      showError(error);
+    }).searchEmployees({
+      query: document.getElementById('employeeSearch').value, region: state.region, position: state.position,
+      course: selectedCourseName(), report: state.report, period: state.period,
+      cutoffDate: state.cutoffDate, page, pageSize: 20,
+    });
+  }
+
+  function showEmployeesSkeleton() {
+    document.getElementById('employeeCount').textContent = 'Actualizando resultados…';
+    document.getElementById('pageStatus').textContent = 'Buscando…';
+    document.getElementById('previousPage').disabled = true;
+    document.getElementById('nextPage').disabled = true;
+    const head = '<thead><tr><th>Colaborador</th><th>Puesto</th><th>Región</th><th>Curso pendiente</th></tr></thead>';
+    const body = Array.from({length: 7}, () => `<tr class="skeleton-table-row"><td><i class="skeleton-line medium"></i><i class="skeleton-line short"></i></td><td><i class="skeleton-line medium"></i></td><td><i class="skeleton-line short"></i></td><td><i class="skeleton-line wide"></i></td></tr>`).join('');
+    const table = document.getElementById('employeesTable');
+    table.setAttribute('aria-busy', 'true');
+    table.innerHTML = `${head}<tbody>${body}</tbody>`;
+  }
+
+  function showEmployeesFailure() {
+    const table = document.getElementById('employeesTable');
+    table.removeAttribute('aria-busy');
+    table.innerHTML = '<tbody><tr><td colspan="4" class="inline-state">No fue posible actualizar los colaboradores.</td></tr></tbody>';
+    document.getElementById('employeeCount').textContent = 'Consulta no disponible';
+    document.getElementById('pageStatus').textContent = '—';
+  }
+
+  function renderEmployeesTable(result) {
+    document.getElementById('employeesTable').removeAttribute('aria-busy');
+    state.employeePage = result.page; state.employeeTotalPages = result.totalPages;
+    document.getElementById('employeeCount').textContent = `${integer(result.total)} pendientes encontrados`;
+    document.getElementById('pageStatus').textContent = `Página ${result.page} de ${result.totalPages}`;
+    document.getElementById('previousPage').disabled = result.page <= 1; document.getElementById('nextPage').disabled = result.page >= result.totalPages;
+    const head = '<thead><tr><th>Colaborador</th><th>Puesto</th><th>Región</th><th>Curso pendiente</th></tr></thead>';
+    const body = result.rows.length ? result.rows.map((row) => `<tr><td><strong>${escapeHtml(row.nombre)}</strong><small>${escapeHtml(row.numero_empleado)} · Tienda ${escapeHtml(row.tienda)}</small></td><td>${escapeHtml(row.puesto)}</td><td>${escapeHtml(row.region)}</td><td>${escapeHtml(row.curso_pendiente)}</td></tr>`).join('') : '<tr><td colspan="4">No hay resultados.</td></tr>';
+    document.getElementById('employeesTable').innerHTML = `${head}<tbody>${body}</tbody>`;
+  }
+
+  function showSuggestionLoading() {
+    const query = document.getElementById('employeeSearch').value.trim();
+    const panel = document.getElementById('employeeSuggestions');
+    if (!query) { hideEmployeeSuggestions(); return; }
+    panel.innerHTML = '<div class="employee-suggestion-state">Buscando sugerencias…</div>';
+    panel.classList.remove('is-hidden');
+  }
+
+  function renderEmployeeSuggestions(rows) {
+    const input = document.getElementById('employeeSearch');
+    const query = input.value.trim();
+    const panel = document.getElementById('employeeSuggestions');
+    if (!query || !peopleOpen() || document.activeElement !== input) { hideEmployeeSuggestions(); return; }
+    if (!rows.length) {
+      panel.innerHTML = '<div class="employee-suggestion-state">No encontramos coincidencias.</div>';
+      panel.classList.remove('is-hidden');
+      return;
+    }
+    panel.innerHTML = rows.slice(0, 8).map((row) => `<button class="employee-suggestion" type="button" role="option" data-employee-name="${escapeHtml(row.nombre)}"><span><strong>${escapeHtml(row.nombre)}</strong><small>${escapeHtml(row.numero_empleado)} · Tienda ${escapeHtml(row.tienda || '—')}</small></span><small>${escapeHtml(row.curso_pendiente || '')}</small></button>`).join('');
+    panel.querySelectorAll('.employee-suggestion').forEach((button) => button.addEventListener('click', () => {
+      input.value = button.dataset.employeeName || '';
+      hideEmployeeSuggestions();
+      clearTimeout(state.employeeSearchTimer);
+      loadEmployees(1);
+    }));
+    panel.classList.remove('is-hidden');
+  }
+
+  function hideEmployeeSuggestions() {
+    document.getElementById('employeeSuggestions').classList.add('is-hidden');
+  }
+
+  function openImport() {
+    resetImport();
+    document.getElementById('importModal').classList.remove('is-hidden');
+  }
+
+  function closeImport() {
+    if (state.importBusy) return;
+    document.getElementById('importModal').classList.add('is-hidden');
+    resetImport();
+  }
+
+  function resetImport() {
+    state.importContents = '';
+    state.importBusy = false;
+    if (state.importProgressTimer) clearInterval(state.importProgressTimer);
+    state.importProgressTimer = null;
+    document.getElementById('packageFileInput').value = '';
+    document.getElementById('importSelectView').classList.remove('is-hidden');
+    document.getElementById('importPreview').classList.add('is-hidden');
+    document.getElementById('importProgress').classList.add('is-hidden');
+    document.getElementById('importProgressBar').style.width = '0%';
+    document.getElementById('publishPackageButton').disabled = true;
+    document.getElementById('cancelImportButton').disabled = false;
+    document.getElementById('closeImportButton').disabled = false;
+  }
+
+  function choosePackage() {
+    if (!state.importBusy) document.getElementById('packageFileInput').click();
+  }
+
+  function readFileText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(new Error('No fue posible leer el archivo seleccionado.'));
+      reader.readAsText(file, 'utf-8');
+    });
+  }
+
+  async function readPackage(event) {
+    const file = event.target.files && event.target.files[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      if (file.size > 40 * 1024 * 1024) throw new Error('El paquete supera el límite de 40 MB.');
+      const contents = await readFileText(file);
+      const data = JSON.parse(contents);
+      if (data.format !== 'macintosh-report-package' || Number(data.version) !== 1) throw new Error('Este archivo no es un paquete compatible de Macintosh.');
+      if (!data.report) throw new Error('El paquete no identifica el reporte.');
+      const summaryRows = data.sheets && data.sheets.Resumen && data.sheets.Resumen.rows;
+      if (!Array.isArray(summaryRows) || !summaryRows.length) throw new Error('El paquete no contiene el resumen del reporte.');
+      const summary = summaryRows[summaryRows.length - 1];
+      state.importContents = contents;
+      document.getElementById('packageFileName').textContent = file.name;
+      document.getElementById('packageMetrics').innerHTML = `
+        <article><small>Reporte</small><strong>${escapeHtml(displayReportName(data.report))}</strong></article>
+        <article><small>Periodo</small><strong>${escapeHtml(data.period || '—')}</strong></article>
+        <article><small>Fecha de corte</small><strong>${escapeHtml(data.cutoffDate || '—')}</strong></article>
+        <article><small>Colaboradores</small><strong>${integer(summary[3])}</strong></article>
+        <article><small>Asignaciones</small><strong>${integer(summary[4])}</strong></article>
+        <article><small>Completados</small><strong>${integer(summary[5])}</strong></article>
+        <article><small>Avance</small><strong>${percent(summary[7])}</strong></article>`;
+      document.getElementById('importSelectView').classList.add('is-hidden');
+      document.getElementById('importPreview').classList.remove('is-hidden');
+      document.getElementById('publishPackageButton').disabled = false;
+    } catch (error) {
+      state.importContents = '';
+      showError(error);
+    }
+  }
+
+  function publishPackage() {
+    if (!state.importContents || state.importBusy) return;
+    state.importBusy = true;
+    document.getElementById('publishPackageButton').disabled = true;
+    document.getElementById('cancelImportButton').disabled = true;
+    document.getElementById('closeImportButton').disabled = true;
+    document.getElementById('importProgress').classList.remove('is-hidden');
+    let progress = 12;
+    const progressBar = document.getElementById('importProgressBar');
+    const progressText = document.getElementById('importProgressText');
+    progressBar.style.width = `${progress}%`;
+    state.importProgressTimer = setInterval(() => {
+      progress = Math.min(88, progress + Math.max(1, Math.round((90 - progress) / 8)));
+      progressBar.style.width = `${progress}%`;
+      progressText.textContent = progress < 38 ? 'Validando el paquete…' : progress < 70 ? 'Actualizando las tablas…' : 'Publicando el reporte…';
+    }, 550);
+    google.script.run.withSuccessHandler((result) => {
+      clearInterval(state.importProgressTimer);
+      state.importProgressTimer = null;
+      progressBar.style.width = '100%';
+      progressText.textContent = 'Actualización completada';
+      setTimeout(() => {
+        state.importBusy = false;
+        document.getElementById('importModal').classList.add('is-hidden');
+        document.getElementById('loading').classList.remove('is-hidden');
+        document.getElementById('app').classList.add('is-hidden');
+        google.script.run.withSuccessHandler((data) => {
+          loadDashboard(data);
+          showMessage(`${data.reportName} ${result.period} fue actualizado correctamente.`);
+          resetImport();
+        }).withFailureHandler(showFatalError).getDashboardData();
+      }, 500);
+    }).withFailureHandler((error) => {
+      clearInterval(state.importProgressTimer);
+      state.importProgressTimer = null;
+      state.importBusy = false;
+      progressBar.style.width = '0%';
+      document.getElementById('importProgress').classList.add('is-hidden');
+      document.getElementById('publishPackageButton').disabled = false;
+      document.getElementById('cancelImportButton').disabled = false;
+      document.getElementById('closeImportButton').disabled = false;
+      showError(error);
+    }).importMacintoshPackage(state.importContents);
+  }
+
+  function renderTable(id, columns, rows) {
+    const head = `<thead><tr>${columns.map(([label]) => `<th>${label}</th>`).join('')}</tr></thead>`;
+    const body = rows.length ? rows.map((row) => `<tr>${columns.map(([, key, type]) => type === 'number' ? `<td class="number">${integer(row[key])}</td>` : type === 'progress' ? `<td class="number">${percent(row[key])}</td>` : `<td>${escapeHtml(row[key] == null ? '' : row[key])}</td>`).join('')}</tr>`).join('') : `<tr><td colspan="${columns.length}">No hay resultados.</td></tr>`;
+    document.getElementById(id).innerHTML = `${head}<tbody>${body}</tbody>`;
+  }
+
+  function populateSelect(id, values, firstLabel) {
+    const select = document.getElementById(id); select.innerHTML = `<option value="">${escapeHtml(firstLabel)}</option>`;
+    [...new Set(values.filter(Boolean))].forEach((value) => { const option = document.createElement('option'); option.value = value; option.textContent = value; select.appendChild(option); });
+    refreshCustomSelect(id);
+  }
+  function populateCourseSelect(rows) {
+    const select = document.getElementById('courseFilter'); select.innerHTML = '<option value="">Cursos</option>';
+    const seen = new Set();
+    rows.slice().sort((a,b) => String(a.curso).localeCompare(String(b.curso), 'es')).forEach((row) => {
+      const key = String(row.curso_clave || row.curso);
+      if (seen.has(key)) return;
+      seen.add(key);
+      const option = document.createElement('option'); option.value = key; option.textContent = row.curso; select.appendChild(option);
+    });
+    refreshCustomSelect('courseFilter');
+  }
+
+  function initializeCustomSelects() {
+    document.querySelectorAll('select').forEach((select) => {
+      if (select.dataset.customized === 'true') return;
+      select.dataset.customized = 'true';
+      select.classList.add('native-select');
+      const shell = document.createElement('div');
+      shell.className = 'custom-select';
+      shell.dataset.selectId = select.id;
+      shell.innerHTML = `<button class="custom-select-trigger" type="button" aria-haspopup="listbox" aria-expanded="false"><span></span><i class="custom-select-arrow" aria-hidden="true"></i></button><div class="custom-select-menu is-hidden"><input class="custom-select-search" type="search" placeholder="Buscar" autocomplete="off" aria-label="Buscar opción"><div class="custom-select-options" role="listbox"></div></div>`;
+      select.insertAdjacentElement('afterend', shell);
+      shell.querySelector('.custom-select-trigger').addEventListener('click', () => toggleCustomSelect(shell));
+      shell.querySelector('.custom-select-search').addEventListener('input', (event) => renderCustomOptions(shell, event.target.value));
+      select.addEventListener('change', () => refreshCustomSelect(select.id));
+      refreshCustomSelect(select.id);
+    });
+  }
+
+  function refreshCustomSelect(id) {
+    const select = document.getElementById(id);
+    const shell = document.querySelector(`.custom-select[data-select-id="${id}"]`);
+    if (!select || !shell) return;
+    const selected = select.options[select.selectedIndex] || select.options[0];
+    shell.querySelector('.custom-select-trigger span').textContent = selected ? selected.textContent : '';
+    shell.querySelector('.custom-select-trigger').disabled = select.disabled;
+    shell.querySelector('.custom-select-search').classList.toggle('is-hidden', select.options.length <= 7);
+    renderCustomOptions(shell, '');
+  }
+
+  function toggleCustomSelect(shell) {
+    const select = document.getElementById(shell.dataset.selectId);
+    if (select.disabled) return;
+    const willOpen = !shell.classList.contains('is-open');
+    closeCustomSelects();
+    if (!willOpen) return;
+    shell.classList.add('is-open');
+    shell.querySelector('.custom-select-menu').classList.remove('is-hidden');
+    shell.querySelector('.custom-select-trigger').setAttribute('aria-expanded', 'true');
+    const search = shell.querySelector('.custom-select-search');
+    search.value = '';
+    renderCustomOptions(shell, '');
+    if (!search.classList.contains('is-hidden')) setTimeout(() => search.focus(), 0);
+  }
+
+  function closeCustomSelects() {
+    document.querySelectorAll('.custom-select.is-open').forEach((shell) => {
+      shell.classList.remove('is-open');
+      shell.querySelector('.custom-select-menu').classList.add('is-hidden');
+      shell.querySelector('.custom-select-trigger').setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  function renderCustomOptions(shell, query) {
+    const select = document.getElementById(shell.dataset.selectId);
+    const normalizedQuery = normalizeSearch(query);
+    const options = Array.from(select.options).filter((option) => !normalizedQuery || normalizeSearch(option.textContent).includes(normalizedQuery));
+    const container = shell.querySelector('.custom-select-options');
+    if (!options.length) {
+      container.innerHTML = '<div class="custom-select-empty">No hay coincidencias.</div>';
+      return;
+    }
+    container.innerHTML = options.map((option) => `<button class="custom-select-option${option.value === select.value ? ' is-selected' : ''}" type="button" role="option" aria-selected="${option.value === select.value}" data-value="${escapeHtml(option.value)}">${escapeHtml(option.textContent)}</button>`).join('');
+    container.querySelectorAll('.custom-select-option').forEach((button) => button.addEventListener('click', () => {
+      select.value = button.dataset.value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      closeCustomSelects();
+    }));
+  }
+
+  function normalizeSearch(value) {
+    return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  }
+  function selectedCourseName() { const row = state.data.courses.find((item) => String(item.curso_clave || item.curso) === state.course); return row ? row.curso : ''; }
+  function displayReportName(value) { return ({almacenista:'Almacenista',asesor:'Asesor',cajero:'Cajero',gerente:'Gerente',gerente_zona:'Gerente de Zona'})[String(value || '').toLowerCase()] || String(value || 'Reporte'); }
+  function monthName(value) { return ({'01':'Enero','02':'Febrero','03':'Marzo','04':'Abril','05':'Mayo','06':'Junio','07':'Julio','08':'Agosto','09':'Septiembre','10':'Octubre','11':'Noviembre','12':'Diciembre'})[value] || value; }
+  function integer(value) { return new Intl.NumberFormat('es-MX', { maximumFractionDigits: 0 }).format(number(value)); }
+  function percent(value, digits = 1) { return new Intl.NumberFormat('es-MX', { style: 'percent', minimumFractionDigits: digits, maximumFractionDigits: digits }).format(number(value)); }
+  function number(value) { const parsed = Number(value); return Number.isFinite(parsed) ? parsed : 0; }
+  function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
+  function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, (character) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[character])); }
+  function showFatalError(error) { document.getElementById('loading').innerHTML = `<strong>No pudimos abrir el reporte.</strong><p>${escapeHtml(error.message || error)}</p>`; }
+  function showError(error) { const toast = document.getElementById('toast'); toast.textContent = error.message || error; toast.classList.add('is-visible'); setTimeout(() => toast.classList.remove('is-visible'), 5000); }
+  function showMessage(message) { const toast = document.getElementById('toast'); toast.textContent = message; toast.classList.add('is-visible'); setTimeout(() => toast.classList.remove('is-visible'), 5000); }
+</script>

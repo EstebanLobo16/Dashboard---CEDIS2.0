@@ -1,0 +1,1085 @@
+<title>Manual del Tablero de Cobranza</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --ground: #F5F6F4;
+    --surface: #FFFFFF;
+    --surface-2: #ECEEEA;
+    --ink: #16201D;
+    --ink-2: #4A5652;
+    --ink-3: #78837F;
+    --line: #D8DCD7;
+    --line-strong: #B9C1BC;
+    --accent: #0E6A59;
+    --accent-ink: #0B5348;
+    --accent-soft: #DDEBE7;
+    --warn: #8F540A;
+    --warn-soft: #F6E8D2;
+    --warn-line: #E3C79B;
+
+    --display: "Zilla Slab", Georgia, "Times New Roman", serif;
+    --body: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  :root:not([data-theme="light"]) {
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #101614;
+      --surface: #17201D;
+      --surface-2: #1E2925;
+      --ink: #E7EDEA;
+      --ink-2: #A8B4B0;
+      --ink-3: #7B8783;
+      --line: #2A3733;
+      --line-strong: #3A4A45;
+      --accent: #55C2A8;
+      --accent-ink: #7FD6C0;
+      --accent-soft: #143029;
+      --warn: #D8A162;
+      --warn-soft: #2C2317;
+      --warn-line: #4A3A22;
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #101614;
+    --surface: #17201D;
+    --surface-2: #1E2925;
+    --ink: #E7EDEA;
+    --ink-2: #A8B4B0;
+    --ink-3: #7B8783;
+    --line: #2A3733;
+    --line-strong: #3A4A45;
+    --accent: #55C2A8;
+    --accent-ink: #7FD6C0;
+    --accent-soft: #143029;
+    --warn: #D8A162;
+    --warn-soft: #2C2317;
+    --warn-line: #4A3A22;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .shell {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 0 80px;
+  }
+
+  @media (min-width: 940px) {
+    .shell {
+      grid-template-columns: 232px minmax(0, 1fr);
+      gap: 56px;
+      padding-inline: 32px;
+    }
+  }
+
+  /* ---------- encabezado ---------- */
+
+  .masthead {
+    grid-column: 1 / -1;
+    border-bottom: 2px solid var(--ink);
+    padding-block: 44px 22px;
+    margin-bottom: 40px;
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 14px;
+  }
+
+  .masthead h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(2rem, 5.2vw, 3.1rem);
+    line-height: 1.05;
+    letter-spacing: -0.015em;
+    margin: 0 0 16px;
+    text-wrap: balance;
+  }
+
+  .standfirst {
+    font-size: 1.06rem;
+    color: var(--ink-2);
+    max-width: 60ch;
+    margin: 0;
+  }
+
+  .masthead-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 22px;
+    margin-top: 22px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+
+  /* ---------- navegación ---------- */
+
+  nav.toc {
+    margin-bottom: 44px;
+  }
+
+  @media (min-width: 940px) {
+    nav.toc {
+      position: sticky;
+      top: 24px;
+      align-self: start;
+      max-height: calc(100vh - 48px);
+      overflow-y: auto;
+      margin-bottom: 0;
+    }
+  }
+
+  nav.toc h2 {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 500;
+    margin: 0 0 12px;
+  }
+
+  nav.toc ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  nav.toc a {
+    display: flex;
+    gap: 10px;
+    padding: 5px 8px 5px 0;
+    color: var(--ink-2);
+    text-decoration: none;
+    font-size: 0.9rem;
+    border-left: 2px solid transparent;
+    padding-left: 12px;
+    transition: color .12s, border-color .12s;
+  }
+
+  nav.toc a:hover { color: var(--accent-ink); border-left-color: var(--accent); }
+  nav.toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  nav.toc .num {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--ink-3);
+    padding-top: 2px;
+  }
+
+  /* ---------- contenido ---------- */
+
+  main { min-width: 0; }
+
+  section { margin-bottom: 68px; scroll-margin-top: 20px; }
+
+  h2.sec {
+    font-family: var(--display);
+    font-size: clamp(1.5rem, 3.2vw, 1.95rem);
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+    text-wrap: balance;
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  h2.sec .n {
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    font-weight: 400;
+    color: var(--accent);
+    letter-spacing: 0.06em;
+  }
+
+  .lede {
+    color: var(--ink-2);
+    max-width: 66ch;
+    margin: 0 0 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  h3 {
+    font-family: var(--display);
+    font-size: 1.16rem;
+    font-weight: 600;
+    margin: 34px 0 10px;
+    text-wrap: balance;
+  }
+
+  h4 {
+    font-family: var(--body);
+    font-size: 0.94rem;
+    font-weight: 600;
+    margin: 22px 0 6px;
+  }
+
+  p, li { max-width: 68ch; }
+  p { margin: 0 0 14px; }
+
+  ul, ol.plain { padding-left: 20px; margin: 0 0 16px; }
+  li { margin-bottom: 7px; }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.855em;
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--accent-ink);
+    word-break: break-word;
+  }
+
+  b, strong { font-weight: 600; }
+
+  a { color: var(--accent-ink); text-underline-offset: 2px; }
+
+  /* ---------- proceso numerado ---------- */
+
+  ol.steps {
+    list-style: none;
+    counter-reset: paso;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  ol.steps > li {
+    counter-increment: paso;
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 18px;
+    padding-block: 20px;
+    border-top: 1px solid var(--line);
+    max-width: none;
+    margin: 0;
+  }
+
+  ol.steps > li:last-child { border-bottom: 1px solid var(--line); }
+
+  ol.steps > li::before {
+    content: counter(paso, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 0.86rem;
+    color: var(--accent);
+    padding-top: 3px;
+  }
+
+  ol.steps .who {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    display: block;
+    margin-bottom: 3px;
+  }
+
+  ol.steps .what { font-weight: 600; display: block; margin-bottom: 4px; }
+  ol.steps p { margin: 0; color: var(--ink-2); font-size: 0.95rem; }
+
+  /* ---------- reglas ---------- */
+
+  .rule {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    padding: 18px 20px;
+    margin-bottom: 14px;
+  }
+
+  .rule h4 { margin-top: 0; }
+  .rule p:last-child { margin-bottom: 0; }
+
+  .rule .src {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-3);
+    margin-top: 10px;
+    padding-top: 9px;
+    border-top: 1px dashed var(--line);
+    max-width: none;
+  }
+
+  /* ---------- tablas ---------- */
+
+  .scroll { overflow-x: auto; margin: 0 0 20px; }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 520px;
+    font-size: 0.9rem;
+  }
+
+  th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 500;
+    padding: 0 14px 9px 0;
+    border-bottom: 1.5px solid var(--line-strong);
+    vertical-align: bottom;
+  }
+
+  td {
+    padding: 11px 14px 11px 0;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+    color: var(--ink-2);
+  }
+
+  td:first-child { color: var(--ink); }
+  td code { font-size: 0.82em; }
+  .num-col { font-variant-numeric: tabular-nums; text-align: right; padding-right: 0; }
+
+  /* ---------- avisos ---------- */
+
+  .note {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    padding: 16px 18px;
+    margin: 0 0 20px;
+  }
+
+  .note.warn { background: var(--warn-soft); border-color: var(--warn-line); }
+
+  .note .tag {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  .note.warn .tag { color: var(--warn); }
+  .note p:last-child { margin-bottom: 0; }
+  .note p { font-size: 0.94rem; }
+
+  /* ---------- fórmula ---------- */
+
+  .formula {
+    font-family: var(--mono);
+    font-size: 0.88rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 16px 18px;
+    margin: 0 0 20px;
+    overflow-x: auto;
+    color: var(--ink);
+    line-height: 1.9;
+  }
+
+  .formula .op { color: var(--accent); }
+
+  footer.end {
+    grid-column: 1 / -1;
+    border-top: 2px solid var(--ink);
+    padding-top: 20px;
+    margin-top: 20px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+
+<div class="shell">
+
+  <header class="masthead">
+    <p class="eyebrow">Universidad Corporativa · Coppel</p>
+    <h1>Manual del Tablero de Cobranza</h1>
+    <p class="standfirst">
+      Cómo se calcula el avance de capacitación de Cobranza, qué reglas se aplican
+      y dónde se cambian cuando llega un curso nuevo, un puesto nuevo o alguien
+      que debe poder publicar.
+    </p>
+    <div class="masthead-meta">
+      <span>Periodo de referencia · 2026-08</span>
+      <span>Reporte · cobranza</span>
+      <span>Todo corre en Google Apps Script</span>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <h2>Contenido</h2>
+    <ol>
+      <li><a href="#que-es"><span class="num">01</span> Qué responde</a></li>
+      <li><a href="#ciclo"><span class="num">02</span> El ciclo mensual</a></li>
+      <li><a href="#fuentes"><span class="num">03</span> De dónde sale cada dato</a></li>
+      <li><a href="#quien"><span class="num">04</span> Quién entra al tablero</a></li>
+      <li><a href="#reglas"><span class="num">05</span> Qué cursos le tocan a cada quien</a></li>
+      <li><a href="#avance"><span class="num">06</span> Cómo se cuenta el avance</a></li>
+      <li><a href="#catalogos"><span class="num">07</span> Los catálogos</a></li>
+      <li><a href="#cursos"><span class="num">08</span> Dar de alta un curso</a></li>
+      <li><a href="#personas"><span class="num">09</span> Puestos y personas</a></li>
+      <li><a href="#parametros"><span class="num">10</span> Parámetros</a></li>
+      <li><a href="#trampas"><span class="num">11</span> Trampas conocidas</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <!-- 01 -->
+    <section id="que-es">
+      <h2 class="sec"><span class="n">01</span> Qué responde</h2>
+      <p class="lede">
+        Una sola pregunta, con corte mensual: <b>de los cursos que el plan de
+        capacitación le exige a cada persona de Cobranza, ¿cuántos lleva
+        completados?</b>
+      </p>
+      <p>
+        El tablero convierte eso en un porcentaje de avance y lo abre por región,
+        por centro, por puesto, por curso y por colaborador. Cada mes cerrado se
+        guarda, así que también responde cómo venía el mes pasado y en qué cambió.
+      </p>
+      <p>
+        Lo que <em>no</em> hace: no registra cursos, no asigna capacitación y no
+        corrige la nómina. Lee cinco archivos que producen otras áreas y los cruza.
+        Si un dato está mal en el origen, aquí sale mal — el tablero avisa, pero no
+        inventa.
+      </p>
+    </section>
+
+    <!-- 02 -->
+    <section id="ciclo">
+      <h2 class="sec"><span class="n">02</span> El ciclo mensual</h2>
+      <p class="lede">
+        Es una secuencia con fechas fijas. Los días importan: cada uno deja margen
+        para reclamar lo que falte antes de que el siguiente dependa de ello.
+      </p>
+
+      <ol class="steps">
+        <li>
+          <div>
+            <span class="who">Las áreas que producen los datos</span>
+            <span class="what">Dejan los cinco archivos en la carpeta <i>Datos crudos</i></span>
+            <p>
+              La Planta de Cobranza a más tardar el día 10. Los demás, antes del 11.
+              Los nombres no tienen que ser exactos: se reconocen por patrón.
+            </p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <span class="who">Automático · día 11, 7:00</span>
+            <span class="what">Revisión previa</span>
+            <p>
+              Verifica que estén los cinco y que sean del mes. <b>Solo manda correo
+              si falta algo</b>, para que el correo que sí llega se lea. Queda un día
+              hábil para conseguir lo que falte.
+            </p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <span class="who">Automático · día 12, 6:00</span>
+            <span class="what">Se procesa y publica el corte</span>
+            <p>
+              Convierte los archivos, aplica las reglas, valida que los números
+              cuadren consigo mismos y publica. Tarda entre 10 y 20 minutos, sin
+              nadie mirando. Si falla, el tablero se queda mostrando el mes anterior
+              — nunca a medias — y llega un correo con el error.
+            </p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <span class="who">El corte que estaba publicado</span>
+            <span class="what">Pasa al histórico</span>
+            <p>
+              Los totales por región, centro, curso y puesto se acumulan en la hoja
+              de histórico. El detalle persona por persona se archiva como archivo
+              aparte en Drive, para que el histórico no crezca sin control.
+            </p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <span class="who">Quien consulta</span>
+            <span class="what">Abre el tablero</span>
+            <p>
+              Ve el mes vigente, puede navegar los meses cerrados y comparar contra
+              el anterior. No necesita permisos especiales para consultar.
+            </p>
+          </div>
+        </li>
+      </ol>
+
+      <div class="note">
+        <span class="tag">Fuera de calendario</span>
+        <p>
+          Un corte también se puede lanzar a mano desde el tablero, y se puede
+          <b>ensayar sin publicar</b> para ver los números antes de que nadie más los
+          vea. Ensayar es lo recomendado la primera vez que cambia una fuente.
+        </p>
+      </div>
+    </section>
+
+    <!-- 03 -->
+    <section id="fuentes">
+      <h2 class="sec"><span class="n">03</span> De dónde sale cada dato</h2>
+      <p class="lede">
+        Cinco archivos, cada uno con un trabajo distinto. Ninguno se edita a mano:
+        se reemplazan por la versión del mes.
+      </p>
+
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th>Archivo</th><th>Quién lo sube</th><th>Qué aporta</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Planta de Cobranza por Posiciones</td>
+              <td>Cobranza</td>
+              <td><b>El padrón</b>: quién pertenece al área, con su puesto y centro. También trae el catálogo de centro → región en su pestaña <code>CENTROS-TIPOCENTROS</code>.</td>
+            </tr>
+            <tr>
+              <td>Detalle Colaborador</td>
+              <td>RRHH</td>
+              <td>La <b>fecha de asignación del puesto</b> y la de contratación. De ahí sale la antigüedad que decide qué cursos aplican.</td>
+            </tr>
+            <tr>
+              <td>PDT de Operación</td>
+              <td>Universidad Corporativa</td>
+              <td>El plan de capacitación de los puestos operativos: qué curso, para qué puesto, desde qué antigüedad.</td>
+            </tr>
+            <tr>
+              <td>PDT Gerencial</td>
+              <td>Universidad Corporativa</td>
+              <td>Lo mismo para los puestos gerenciales, más la <b>matriz de niveles</b> que dice qué curso le toca a qué nivel jerárquico.</td>
+            </tr>
+            <tr>
+              <td>Finalizaciones</td>
+              <td>Universidad Corporativa</td>
+              <td>Quién completó qué curso. Es el archivo pesado: unas 237 mil filas.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note warn">
+        <span class="tag">Antes de subir las finalizaciones</span>
+        <p>
+          Hay que pasarlas por la celda <code>celda_aligerar_csv.py</code>, que las
+          concentra en un solo archivo y deja únicamente las 7 columnas que el
+          proceso usa: de 117 MB pasan a unos 17. <b>Sin ese paso el archivo no
+          cabe.</b> Y si se omiten columnas de más, el respaldo de fechas deja de
+          funcionar en silencio.
+        </p>
+      </div>
+
+      <h3>El problema de los dos números</h3>
+      <p>
+        La Planta identifica a la gente por <b>número de trabajador</b> y el Detalle
+        por <b>número de persona</b>. Son sistemas distintos y no siempre coinciden.
+        Las finalizaciones traen los dos, así que sirven de puente.
+      </p>
+      <p>Para encontrar a alguien, el proceso intenta en este orden:</p>
+      <ol class="plain">
+        <li>Por número directo.</li>
+        <li>Por el puente que arman las finalizaciones — <b>solo existe si la persona ya tiene al menos un curso registrado.</b></li>
+        <li>Por nombre exacto, y únicamente si ese nombre es único: si dos personas se llaman igual, se descartan las dos antes que arriesgar un cruce equivocado.</li>
+      </ol>
+      <p>
+        Si los tres fallan, la persona queda fuera del corte. Es la causa de casi
+        todas las exclusiones, y casi siempre son altas o cambios de puesto muy
+        recientes que todavía no tienen ningún curso.
+      </p>
+    </section>
+
+    <!-- 04 -->
+    <section id="quien">
+      <h2 class="sec"><span class="n">04</span> Quién entra al tablero</h2>
+      <p class="lede">
+        El universo es <b>la Planta de Cobranza por Posiciones</b>: el censo del
+        área. No es la nómina completa filtrada por nombre de puesto.
+      </p>
+      <p>
+        La distinción importa. Filtrar la nómina por puesto arrastra gente de otras
+        áreas que tiene el mismo nombre de puesto y no pertenece a Cobranza. El
+        padrón es el censo, y punto.
+      </p>
+
+      <h3>Quién queda fuera, y por qué</h3>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th>Motivo</th><th>Qué significa</th><th>En 2026-08</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Sin fecha de puesto</td>
+              <td>No se le encontró fecha en ninguna de las tres fuentes. Casi siempre altas o cambios de puesto recientes sin cursos aún.</td>
+              <td class="num-col">1,139</td>
+            </tr>
+            <tr>
+              <td>Fecha posterior al corte</td>
+              <td>La fecha de asignación cae después de la fecha del corte: todavía no hay nada que evaluar.</td>
+              <td class="num-col">45</td>
+            </tr>
+            <tr>
+              <td>Por categoría</td>
+              <td>Filtro opcional, apagado por omisión. Si se enciende, solo entran las personas de categoría Operación.</td>
+              <td class="num-col">0</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="formula">
+        12,278 leídos <span class="op">−</span> 1,139 sin fecha <span class="op">−</span> 45 fecha futura <span class="op">−</span> 0 por categoría <span class="op">=</span> <b>11,094 publicados</b>
+      </div>
+
+      <p>
+        Excluir a alguien <b>no altera el porcentaje de avance</b> — solo el conteo
+        de colaboradores. Quien no tiene fecha no tiene cursos asignados, así que no
+        entra ni al numerador ni al denominador.
+      </p>
+
+      <div class="note">
+        <span class="tag">Si el número de excluidos se dispara</span>
+        <p>
+          Que suba poco a poco es normal. Que <b>salte de golpe</b> significa que una
+          columna cambió de nombre en el archivo de origen, o que las finalizaciones
+          llegaron sin las columnas de fecha. El ensayo del corte trae el desglose
+          por fuente para distinguir un caso del otro.
+        </p>
+      </div>
+    </section>
+
+    <!-- 05 -->
+    <section id="reglas">
+      <h2 class="sec"><span class="n">05</span> Qué cursos le tocan a cada quien</h2>
+      <p class="lede">
+        Los dos PDT definen el plan. Cada regla dice: a qué puesto le toca qué
+        curso, desde cuánta antigüedad, y en qué centros.
+      </p>
+
+      <div class="rule">
+        <h4>Plan general — por puesto</h4>
+        <p>
+          Cada puesto listado en el PDT recibe cada curso de la pestaña de cursos
+          asignados. Es la mayoría de las reglas.
+        </p>
+        <p class="src">Origen: PDT · pestañas <code>Colaboradores_asignados</code> × <code>Cursos_asignados</code></p>
+      </div>
+
+      <div class="rule">
+        <h4>Plan específico — por puesto y centro</h4>
+        <p>
+          Algunos cursos aplican solo en ciertos centros. Cuando la columna de
+          centros dice <code>007 Cobranzas</code> se refiere a <b>toda el área</b>, no a
+          un centro con ese número: la restricción real es la lista de centros
+          exceptuados.
+        </p>
+        <p class="src">Origen: PDT · pestañas <code>Colaboradores_especificos</code> × <code>Cursos_especificos</code></p>
+      </div>
+
+      <div class="rule">
+        <h4>Matriz gerencial — por nivel jerárquico</h4>
+        <p>
+          En el plan gerencial no todos los niveles reciben todos los cursos. La
+          matriz lo marca curso por curso con un <code>1</code>. Un puesto que no esté en
+          el catálogo de niveles recibe todos los cursos del plan gerencial, y el
+          proceso lo avisa.
+        </p>
+        <p class="src">Origen: PDT Gerencial · matriz en <code>Cursos_asignados</code> + catálogo <code>NivelesGerencial</code></p>
+      </div>
+
+      <div class="rule">
+        <h4>Antigüedad mínima — cuándo empieza a contar</h4>
+        <p>
+          Un curso solo aplica cuando la persona lleva suficiente tiempo
+          <b>en el puesto</b>. El PDT da un rango en meses (por ejemplo <code>3-6</code>) y
+          se toma el mínimo, convertido a días.
+        </p>
+        <p class="src">Regla: <code>días en el puesto ≥ mínimo del rango × 30</code></p>
+      </div>
+
+      <div class="rule">
+        <h4>Centros exceptuados</h4>
+        <p>
+          Ciertos centros no reciben ciertos cursos. La lista sale de la columna
+          <i>Centros que no aplican</i> del propio PDT, combinada con el catálogo
+          <code>ExcepcionImpresion</code>, que manda sobre a qué puestos aplica.
+        </p>
+        <p class="src">Origen: PDT + catálogo <code>ExcepcionImpresion</code></p>
+      </div>
+
+      <div class="rule">
+        <h4>Agrupaciones — lo que parece curso y no lo es</h4>
+        <p>
+          <i>Formación de Conductores Cobranza 2026</i> no es un curso: es el nombre
+          del paquete de los tres que ya vienen listados por separado. Contarlo
+          inflaría el denominador con algo que nadie puede completar, así que se
+          omite.
+        </p>
+        <p class="src">Origen: catálogo <code>Agrupaciones</code></p>
+      </div>
+
+      <div class="rule">
+        <h4>Un curso en los dos planes se cuenta una vez</h4>
+        <p>
+          Los planes de Colaborador y Gerencial se suman en un solo reporte. Si un
+          puesto aparece en ambos con el mismo curso, la persona lo toma una vez.
+        </p>
+        <p class="src">Regla de negocio 2.2</p>
+      </div>
+
+      <div class="note">
+        <span class="tag">La fecha que decide todo</span>
+        <p>
+          La antigüedad se cuenta desde la <b>fecha de asignación del puesto</b>, no
+          desde la contratación: un puesto trae sus cursos obligatorios cuando se
+          toma. Sobre agosto, eso mueve la mediana de 796 días a 329 — es decir,
+          mucha gente que parecía tener todo vencido apenas va empezando.
+        </p>
+      </div>
+    </section>
+
+    <!-- 06 -->
+    <section id="avance">
+      <h2 class="sec"><span class="n">06</span> Cómo se cuenta el avance</h2>
+      <p class="lede">
+        Sin ponderaciones ni pesos por curso. Es una división simple, y esa
+        simpleza es lo que la hace auditable.
+      </p>
+
+      <div class="formula">
+        avance <span class="op">=</span> cursos completados <span class="op">÷</span> cursos asignados
+      </div>
+
+      <p>
+        Un curso cuenta como <b>asignado</b> cuando la regla le aplica a la persona y
+        ya alcanzó la antigüedad mínima. Cuenta como <b>completado</b> cuando aparece
+        en las finalizaciones marcado como completado.
+      </p>
+
+      <h3>El cruce de nombres</h3>
+      <p>
+        Los cursos se cruzan por nombre <b>normalizado</b>, no literal: acentos,
+        mayúsculas y espacios de más no rompen nada. Lo que sí rompe es un cambio
+        real de nombre — para eso está el catálogo de alias.
+      </p>
+      <p>
+        Si un curso del plan no aparece <b>ni una sola vez</b> en las finalizaciones,
+        el proceso lo avisa por nombre: o cambió de nombre y le falta un alias, o se
+        dejó de impartir. Saldría con 0% y arrastraría el promedio.
+      </p>
+
+      <h3>La validación que impide publicar números falsos</h3>
+      <p>
+        Antes de publicar, el proceso comprueba que las sumas cuadren entre sí: lo
+        que dice el resumen tiene que ser exactamente lo que suman las pestañas de
+        detalle, por colaborador, por región y por curso.
+      </p>
+      <p>
+        <b>Si no cuadra, no publica.</b> Es preferible quedarse con el mes anterior
+        que mostrar un tablero que miente con seguridad.
+      </p>
+
+      <div class="note">
+        <span class="tag">Referencia · corte 2026-08</span>
+        <p>
+          11,094 colaboradores · 166,087 asignados · 140,872 completados ·
+          <b>84.8% de avance</b>, con conciliación correcta. Si una corrida futura
+          sobre estas mismas fuentes no reproduce estos números, algo cambió.
+        </p>
+      </div>
+    </section>
+
+    <!-- 07 -->
+    <section id="catalogos">
+      <h2 class="sec"><span class="n">07</span> Los catálogos</h2>
+      <p class="lede">
+        Todo lo que puede cambiar sin programar vive en la hoja de cálculo
+        <b>COB · Catálogos</b>. El proceso la lee; nunca la reescribe.
+      </p>
+
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th>Pestaña</th><th>Para qué sirve</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>Parametros</code></td><td>Las decisiones de cálculo. Cada renglón trae su descripción.</td></tr>
+            <tr><td><code>Administradores</code></td><td>Quién puede publicar un corte.</td></tr>
+            <tr><td><code>Regiones</code></td><td>Las 15 regiones oficiales y su orden.</td></tr>
+            <tr><td><code>MapaRegiones</code></td><td>Traduce una región mal escrita en el origen a la oficial.</td></tr>
+            <tr><td><code>AliasCursos</code></td><td>Cursos que cambiaron de nombre, o que salieron del plan.</td></tr>
+            <tr><td><code>Agrupaciones</code></td><td>Nombres que son paquetes de cursos y no cursos.</td></tr>
+            <tr><td><code>NivelesGerencial</code></td><td>A qué nivel de la matriz corresponde cada puesto gerencial.</td></tr>
+            <tr><td><code>ExcepcionImpresion</code></td><td>Centros exceptuados y a qué puestos aplica la excepción.</td></tr>
+            <tr><td><code>Fuentes</code></td><td>Cómo se reconoce cada archivo por su nombre.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note warn">
+        <span class="tag">Después de cualquier cambio</span>
+        <p>
+          Menú <b>Cobranza → Aplicar cambios de los catálogos</b>. Un cambio de
+          catálogo <b>no recalcula el corte ya publicado</b>: aplica al siguiente. Para
+          verlo de inmediato, hay que volver a procesar el corte.
+        </p>
+      </div>
+    </section>
+
+    <!-- 08 -->
+    <section id="cursos">
+      <h2 class="sec"><span class="n">08</span> Dar de alta un curso</h2>
+      <p class="lede">
+        La mayoría de los cursos <b>no se dan de alta aquí</b>. Entran solos en cuanto
+        aparecen en el PDT del mes: el plan es la fuente. Los catálogos solo
+        resuelven los casos que el cruce automático no alcanza.
+      </p>
+
+      <h3>Curso nuevo en el plan</h3>
+      <p>
+        No se hace nada. Si viene en el PDT y su nombre coincide con el de las
+        finalizaciones, el siguiente corte ya lo cuenta.
+      </p>
+
+      <h3>Curso que cambió de nombre</h3>
+      <p>
+        Es el caso más común. Si el PDT lo llama de una forma y las finalizaciones
+        de otra, el cruce falla y el curso sale en 0%. En <code>AliasCursos</code>:
+      </p>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th>curso_en_plan</th><th>curso_en_finalizaciones</th><th>accion</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Como viene en el PDT</td>
+              <td>Como viene en las finalizaciones</td>
+              <td><code>ALIAS</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Curso que salió del plan</h3>
+      <p>
+        Mismo catálogo, con acción <code>EXCLUIR</code> y la columna de finalizaciones
+        vacía. Deja de contarse para todos.
+      </p>
+
+      <h3>Curso que todavía no se imparte</h3>
+      <p>
+        Acción <code>PENDIENTE</code>: cuenta como asignado y nadie lo completa. Es lo que
+        se hace cuando el curso ya es obligatorio pero aún no hay registros — el
+        avance debe reflejar que está pendiente, no ignorarlo.
+      </p>
+
+      <h3>Curso que en realidad es un paquete</h3>
+      <p>
+        Si el PDT lista un nombre que agrupa a otros cursos ya listados por
+        separado, va en <code>Agrupaciones</code>: un renglón por cada curso que lo
+        compone. Así el paquete no infla el denominador.
+      </p>
+
+      <div class="note">
+        <span class="tag">Cómo detectarlos</span>
+        <p>
+          No hay que adivinar. Al ensayar un corte, el proceso <b>nombra</b> cada curso
+          del plan que no aparece ni una vez en las finalizaciones. Esa lista es
+          exactamente la de los que necesitan un alias.
+        </p>
+      </div>
+    </section>
+
+    <!-- 09 -->
+    <section id="personas">
+      <h2 class="sec"><span class="n">09</span> Puestos y personas</h2>
+      <p class="lede">
+        Las personas tampoco se dan de alta a mano: entran por la Planta. Lo que sí
+        se administra es quién puede publicar y cómo se clasifican los puestos.
+      </p>
+
+      <h3>Dar de alta a quien publica</h3>
+      <p>
+        Un renglón en <code>Administradores</code> con su correo y <code>SI</code> en la columna
+        de publicar. Consultar el tablero no requiere estar en esa lista; solo
+        publicar.
+      </p>
+      <p>
+        El permiso se verifica <b>en el servidor</b>, no en el navegador: ocultar el
+        botón no sería seguridad. Y si la lista de administradores no se puede leer,
+        <b>nadie</b> puede publicar — falla cerrado, nunca abierto.
+      </p>
+
+      <h3>Puesto nuevo en Cobranza</h3>
+      <p>
+        Entra solo con la Planta. Para que reciba cursos tiene que estar en el PDT:
+        si el proceso encuentra gente en un puesto sin ninguna regla de plan, lo
+        reporta como <i>personas sin plan</i> — aparecen con 0 de 0.
+      </p>
+
+      <h3>Puesto gerencial nuevo</h3>
+      <p>
+        Hay que agregarlo a <code>NivelesGerencial</code> con su nivel de la matriz. Si no
+        está, recibe <b>todos</b> los cursos del plan gerencial y el proceso lo avisa
+        por nombre — es un aviso que conviene atender, porque sobreasigna.
+      </p>
+
+      <h3>Región nueva o mal escrita</h3>
+      <p>
+        Si el catálogo de centros trae una región que no está entre las 15
+        oficiales, se mapea en <code>MapaRegiones</code>: cómo viene → cómo debe quedar.
+        Sin eso aparecen regiones fantasma con un colaborador cada una.
+      </p>
+    </section>
+
+    <!-- 10 -->
+    <section id="parametros">
+      <h2 class="sec"><span class="n">10</span> Parámetros</h2>
+      <p class="lede">
+        Las decisiones de cálculo. Los valores por omisión son los que están
+        vigentes y los que respaldan los números de referencia de este manual.
+      </p>
+
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th>Parámetro</th><th>Valor</th><th>Qué decide</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>BASE_ANTIGUEDAD</code></td><td><code>PUESTO</code></td><td>Desde cuándo se cuenta la antigüedad. <code>PUESTO</code> = desde la asignación del puesto. <code>EMPRESA</code> = desde la contratación.</td></tr>
+            <tr><td><code>PADRON</code></td><td><code>PLANTA</code></td><td>Quién define el universo. <code>PLANTA</code> = el censo del área.</td></tr>
+            <tr><td><code>SIN_FECHA_CONTRATACION</code></td><td><code>EXCLUIR</code></td><td>Qué hacer con quien no tiene fecha en ninguna fuente. <code>ANTIGUEDAD_CERO</code> lo deja entrar con 0 de 0.</td></tr>
+            <tr><td><code>RESPETAR_MATRIZ_GERENCIAL</code></td><td><code>SI</code></td><td>Si se honra la matriz de niveles del PDT gerencial. En <code>NO</code>, todos los cursos aplican a todos los puestos.</td></tr>
+            <tr><td><code>ESPECIALIZACION_COMO_CURSO</code></td><td><code>NO</code></td><td>Si las agrupaciones cuentan como curso propio.</td></tr>
+            <tr><td><code>CURSO_SIN_FUENTE</code></td><td><code>PENDIENTE</code></td><td>Qué pasa con un curso del plan que nunca aparece en finalizaciones.</td></tr>
+            <tr><td><code>DEDUPLICAR_FINALIZACIONES</code></td><td><code>SI</code></td><td>Si una misma persona+curso cuenta una sola vez aunque venga repetida.</td></tr>
+            <tr><td><code>FILTRAR_CATEGORIA_OPERACION</code></td><td><code>NO</code></td><td>Si solo entran las personas de categoría Operación.</td></tr>
+            <tr><td><code>FAMILIA_CENTRO_COSTOS</code></td><td><code>007</code></td><td>La familia de centro de costo de Cobranza, para leer <code>007 Cobranzas</code> como el área completa.</td></tr>
+            <tr><td><code>DIAS_POR_MES</code></td><td><code>30</code></td><td>Conversión del rango de meses del plan a días.</td></tr>
+            <tr><td><code>NUEVO_INGRESO_DIAS</code></td><td><code>90</code></td><td>Debajo de cuántos días se marca a alguien como nuevo ingreso.</td></tr>
+            <tr><td><code>PERIODO</code></td><td>vacío</td><td>Mes a procesar. Vacío = el mes anterior al día en que se corre.</td></tr>
+            <tr><td><code>FECHA_CORTE</code></td><td>vacío</td><td>Fecha de corte. Vacío = último día del periodo.</td></tr>
+            <tr><td><code>ARCHIVAR_DETALLE</code></td><td><code>SI</code></td><td>Si el detalle del corte anterior se guarda en Drive al publicar uno nuevo.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note warn">
+        <span class="tag">Antes de cambiar un parámetro</span>
+        <p>
+          Cambian los números de todos los meses que se procesen a partir de
+          entonces, pero <b>no los ya publicados</b>. Eso deja series que no son
+          comparables entre sí. Conviene ensayar el corte antes y después, y anotar
+          en el histórico desde qué mes cambió el criterio.
+        </p>
+      </div>
+    </section>
+
+    <!-- 11 -->
+    <section id="trampas">
+      <h2 class="sec"><span class="n">11</span> Trampas conocidas</h2>
+      <p class="lede">
+        Cosas que cuestan horas si nadie las advirtió. No se deducen leyendo el
+        sistema.
+      </p>
+
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th>Situación</th><th>Qué pasa</th><th>Qué hacer</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Reemplazar un archivo crudo con el mismo nombre</td>
+              <td>Se reutiliza la conversión anterior y el archivo nuevo se ignora, sin error visible.</td>
+              <td>Correr <code>limpiarConversiones()</code> una vez.</td>
+            </tr>
+            <tr>
+              <td>La página se queda cargando</td>
+              <td>La barra de progreso es simulada: no sabe nada del servidor. El proceso sigue corriendo aunque el navegador se rinda.</td>
+              <td>Ver el panel de <b>Ejecuciones</b>, o correr <code>estadoDelCorte()</code>.</td>
+            </tr>
+            <tr>
+              <td>Cerrar o cancelar en el navegador</td>
+              <td>No detiene el proceso del servidor.</td>
+              <td>Confirmar en Ejecuciones antes de lanzar otro.</td>
+            </tr>
+            <tr>
+              <td>Publicar un corte con un error</td>
+              <td>Republicar el mismo mes <b>reemplaza</b>, no duplica: cada pestaña se reescribe completa y el histórico quita las filas de ese mes antes de agregar.</td>
+              <td>Volver a procesar. No hay que borrar nada a mano.</td>
+            </tr>
+            <tr>
+              <td>Corregir un mes ya superado por otro</td>
+              <td>Ese sí requiere un procedimiento: restaurar el mes archivado, corregir, republicar y volver a dejar el mes vigente.</td>
+              <td>Seguir el manual de operación, sin saltarse el último paso.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        <span class="tag">Lo más importante</span>
+        <p>
+          <b>Ensayar no publica.</b> Ante cualquier duda —una fuente que cambió, un
+          parámetro que se movió, un mes que se ve raro— se ensaya el corte, se
+          revisan los números y los avisos, y solo entonces se publica. Es gratis y
+          es reversible.
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="end">
+    Tablero de avance de capacitación · Cobranza · Universidad Corporativa, Coppel.
+    Números de referencia del corte 2026-08.
+  </footer>
+
+</div>
