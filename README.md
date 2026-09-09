@@ -9,6 +9,7 @@ Apps Script. Universidad Corporativa · Coppel.
 |---|---|
 | Quien **usa** el tablero o necesita configurarlo | **[`docs/manual.html`](docs/manual.html)** — el manual completo, ábrelo en el navegador |
 | Quien **retoma este proyecto** sin contexto | **[Estado actual](#estado-actual-2026-09-09)**, aquí abajo |
+| Quien va a construir el **tablero de CEDIS** | **[`docs/06-plan-cedis.md`](docs/06-plan-cedis.md)** — el plan de trabajo, con los datos de CEDIS ya medidos |
 | Quien lo va a **instalar** | [`docs/instalacion.html`](docs/instalacion.html) — ábrelo en el navegador |
 | Quien **opera** el tablero mes con mes | [`docs/05-operacion.md`](docs/05-operacion.md) |
 | Quien **toca el código** | [`src/README.md`](src/README.md) |
@@ -21,8 +22,7 @@ Apps Script. Universidad Corporativa · Coppel.
 | `src/` | El proyecto de Apps Script: almacén, motor, tablero |
 | `pipeline/` | Lo que corre fuera de Apps Script: el cuaderno de Colab y las herramientas de prueba |
 | `docs/` | La propuesta, el contrato de datos y los manuales |
-| `Tablero-Compañero/` | El tablero de Tienda que sirvió de base |
-| `Avance-interrumpido/` | El cuaderno original, el PDF de lógicas y las fuentes de agosto |
+| `base_cedis/` | Los archivos con que el área alimenta el proceso de **CEDIS** |
 
 ## Documentos
 
@@ -37,6 +37,7 @@ Apps Script. Universidad Corporativa · Coppel.
 | [`manual.html`](docs/manual.html) | **El manual completo**: reglas, catálogos y configuración |
 | [`instalacion.html`](docs/instalacion.html) | Los pasos para instalar y desplegar |
 | [`replicar-en-otra-area.md`](docs/replicar-en-otra-area.md) | Cómo levantar el mismo tablero para CEDIS o CATd |
+| [`06-plan-cedis.md`](docs/06-plan-cedis.md) | **El plan de trabajo del tablero de CEDIS**: los datos medidos, las siete diferencias con Cobranza y las etapas |
 
 ## Cómo funciona, en corto
 
