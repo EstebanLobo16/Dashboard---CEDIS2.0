@@ -4,7 +4,13 @@ Réplica del tablero de Cobranza sobre datos de CEDIS, íntegramente en Google
 Apps Script. Universidad Corporativa · Coppel.
 
 > **En construcción · etapas 1 a 6 de 7 terminadas.** La séptima es instalarlo
-> en Apps Script: **[`docs/07-ensayo.md`](docs/07-ensayo.md)**. El código heredado de Cobranza
+> en Apps Script: **[`docs/07-ensayo.md`](docs/07-ensayo.md)**.
+>
+> ⚠ **El corte no cabe en Apps Script.** `ensayarCorte()` pasa de 15 minutos sin
+> terminar, contra un límite de 30. El motor hace el mismo cálculo en **6
+> segundos** fuera de Google: el tiempo se va en mover 3.8 millones de celdas a
+> través de una hoja. El plan para sacarlo de ahí está en
+> **[`docs/08-plan-colab.md`](docs/08-plan-colab.md)**. El código heredado de Cobranza
 > está completo y probado en producción; lo que falta es adaptarlo a las fuentes
 > y las reglas de CEDIS. El plan, con los datos ya medidos, está en
 > **[`docs/06-plan-cedis.md`](docs/06-plan-cedis.md)**.
@@ -53,6 +59,7 @@ Apps Script. Universidad Corporativa · Coppel.
 | [`replicar-en-otra-area.md`](docs/replicar-en-otra-area.md) | Cómo levantar el mismo tablero para CEDIS o CATd |
 | [`06-plan-cedis.md`](docs/06-plan-cedis.md) | **El plan de trabajo del tablero de CEDIS**: los datos medidos, las siete diferencias con Cobranza y las etapas |
 | [`07-ensayo.md`](docs/07-ensayo.md) | **La guía paso a paso para instalarlo y publicar el primer corte**, con los números que cada paso debe reproducir |
+| [`08-plan-colab.md`](docs/08-plan-colab.md) | **Mover el cálculo a Colab**, porque el corte no cabe en Apps Script: de dónde salen los archivos, dónde queda el paquete y qué pasa con el histórico |
 
 ## Cómo funciona, en corto
 
