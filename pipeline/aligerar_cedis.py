@@ -175,11 +175,14 @@ def rutas_entrada(carpeta):
         # otro nombre, y adivinarlo desde un "no encontré nada" es perder media
         # hora.
         hay = sorted(os.listdir(carpeta))
-        listado = '\n'.join(f'    {n}' for n in hay[:25]) or '    (la carpeta está vacía)'
+        listado = '\n'.join('    ' + n for n in hay[:25])
+        if not listado:
+            listado = '    (la carpeta está vacía)'
+        if len(hay) > 25:
+            listado += f'\n    … y {len(hay) - 25} más'
         raise SystemExit(
             f'No encontré ningún "CEDIS P*.csv" en:\n    {carpeta}\n\n'
-            f'Lo que sí hay ahí:\n{listado}'
-            f'{f"{chr(10)}    … y {len(hay) - 25} más" if len(hay) > 25 else ""}\n\n'
+            f'Lo que sí hay ahí:\n{listado}\n\n'
             'Aquí solo entran los CSV de finalizaciones (CEDIS P1, P2, P3).\n'
             'Los dos PDT y el Detalle Colaborador NO pasan por este script:\n'
             'se suben a Drive tal cual.\n\n'
@@ -245,6 +248,11 @@ def main():
                       .sort_values(['Número Persona', 'Nombre Curso'])
                       .reset_index(drop=True))
 
+    # Las revisiones van ANTES de escribir. Si algo está mal, no queremos dos
+    # archivos que se ven bien sentados en la carpeta de datos crudos: alguien
+    # los va a subir sin volver a mirar esta salida.
+    revisar(datos, padron, finalizaciones)
+
     ruta_padron = os.path.join(salida, PADRON)
     ruta_final = os.path.join(salida, FINALIZACIONES)
     padron.to_csv(ruta_padron, index=False, encoding='utf-8')
@@ -257,8 +265,6 @@ def main():
     print(f'  {peso_antes / 1048576:.1f} MB  ->  {peso_despues / 1048576:.1f} MB  '
           f'({peso_despues / peso_antes:.1%} del original)')
     print(f'\n  {ruta_padron}\n  {ruta_final}')
-
-    revisar(datos, padron, finalizaciones)
 
     print(f"""
 LO QUE SIGUE
@@ -309,8 +315,10 @@ def revisar(datos, padron, finalizaciones):
     #    1,281 personas fuera del corte sin explicación.
     for tabla, nombre in ((padron, PADRON), (finalizaciones, FINALIZACIONES)):
         vacias = [c for c in tabla.columns if tabla[c].notna().sum() == 0]
-        revisar_que(not vacias, f'{nombre}: ninguna columna quedó vacía'
-                                f'{"" if not vacias else " — " + ", ".join(vacias)}')
+        detalle = ''
+        if vacias:
+            detalle = ' — ' + ', '.join(vacias)
+        revisar_que(not vacias, nombre + ': ninguna columna quedó vacía' + detalle)
 
     # 2. El padrón tiene que traer a todas las personas, una vez cada una.
     antes = datos['Número Persona'].nunique()
@@ -334,12 +342,18 @@ def revisar(datos, padron, finalizaciones):
         return set(zip(tabla.loc[ok, 'Número Persona'], curso[ok]))
 
     perdidos = completados(datos) - completados(finalizaciones)
+    detalle = ''
+    if perdidos:
+        detalle = f' — se perdieron {len(perdidos):,}'
     revisar_que(not perdidos,
-                f'finalizaciones: no se perdió ninguna completada al deduplicar'
-                f'{"" if not perdidos else f" — se perdieron {len(perdidos):,}"}')
+                'finalizaciones: no se perdió ninguna completada al deduplicar' + detalle)
 
     if fallos:
-        raise ValueError(f'{len(fallos)} revisión(es) fallaron; los archivos NO sirven.')
+        raise SystemExit(
+            f'\n{len(fallos)} revisión(es) fallaron, así que NO se escribió nada.\n'
+            'Los datos de origen tienen algo distinto de lo esperado; manda esta\n'
+            'salida completa antes de subir nada a Drive.'
+        )
 
 
 if __name__ == '__main__':

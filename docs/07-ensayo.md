@@ -124,6 +124,11 @@ revisarlos antes, déjala vacía y salen junto a los originales.
 
 5. **Ejecutar.** Te va a pedir permiso para montar tu Drive: acéptalo.
 
+> ⚠ **Pega el archivo tal cual, sin dejar que Colab te "ayude".** Si el editor
+> ofrece autocompletar o corregir algo, recházalo. Una sugerencia de Colab ya
+> cambió una línea de este script por una llamada a una función que no existe
+> (`pluralize_str_if_needed`), y reventó a media corrida.
+
 > **¿Cómo saco la ruta de una carpeta de Drive?** En Colab, el icono de carpeta
 > de la barra izquierda → `drive` → `MyDrive` → navega hasta ella → clic derecho
 > → **Copiar ruta**. Siempre empieza con `/content/drive/MyDrive/`.
@@ -131,9 +136,14 @@ revisarlos antes, déjala vacía y salen junto a los originales.
 Tarda unos minutos. Si algo está mal, el script **no escribe nada** y te dice
 qué pasó: si no encuentra los CSV, te lista lo que sí hay en esa carpeta.
 
+Si truena con un error de Python que menciona un nombre raro —una función que no
+reconoces—, no es tu instalación: es el pegado. Vuelve a copiar el archivo desde
+el repo y pégalo en una celda nueva.
+
 ### 3.2 · Las seis revisiones
 
-Tiene que terminar con las seis en `ok`:
+Corren **antes** de escribir nada, así que salen primero. Tienen que dar las seis
+en `ok`:
 
 ```
   ok   cedis_padron.csv: ninguna columna quedó vacía
@@ -144,11 +154,13 @@ Tiene que terminar con las seis en `ok`:
   ok   finalizaciones: no se perdió ninguna completada al deduplicar
 ```
 
-**Si alguna dice `MAL`, el script aborta y no escribe nada.** Está bien que lo
-haga: los archivos que produciría se verían correctos y no lo serían. Las seis
-están puestas ahí porque cada una tapa un error que ya costó horas.
+**Si alguna dice `MAL`, el script para y no escribe nada** — ni siquiera un
+archivo a medias. Está bien que sea así: los archivos que produciría se verían
+correctos y no lo serían, y nadie vuelve a mirar esta salida antes de subirlos.
+Las seis están ahí porque cada una tapa un error que ya costó horas.
 
-Y el resumen de peso, que es el que confirma que valió la pena:
+Después de las revisiones viene el resumen de peso, que es el que confirma que
+valió la pena:
 
 ```
   3 archivos  ->  2
