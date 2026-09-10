@@ -1,1 +1,3 @@
 Archivos base/crudos/
+__pycache__/
+*.pyc
