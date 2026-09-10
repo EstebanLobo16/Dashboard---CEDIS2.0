@@ -236,7 +236,9 @@ def rutas_entrada(carpeta):
     return rutas
 
 
-def main():
+def main(instrucciones=True):
+    """Aligera los CSV. `instrucciones=False` calla el "lo que sigue" final, que
+    no aplica cuando esto corre dentro del cuaderno del corte."""
     entrada, salida = resolver_carpetas()
     rutas = rutas_entrada(entrada)
     columnas = sorted(set(COLUMNAS_PADRON) | set(COLUMNAS_FINALIZACIONES))
@@ -309,6 +311,9 @@ def main():
     print(f'  {peso_antes / 1048576:.1f} MB  ->  {peso_despues / 1048576:.1f} MB  '
           f'({peso_despues / peso_antes:.1%} del original)')
     print(f'\n  {ruta_padron}\n  {ruta_final}')
+
+    if not instrucciones:
+        return
 
     print(f"""
 LO QUE SIGUE

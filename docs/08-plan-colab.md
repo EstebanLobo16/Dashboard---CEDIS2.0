@@ -188,7 +188,33 @@ silencio, que es exactamente la enfermedad que este proyecto vino a curar.
 | **E** | Ensayo y documentación | 1 |
 | | | **6** |
 
-### A · El paquete desde Colab · 2 días
+### A · El paquete desde Colab · 2 días · **HECHA** (con la C adentro)
+
+La etapa C —los catálogos desde la hoja— se hizo aquí y no aparte: un cuaderno
+que publicara con las semillas del código en vez de con la hoja sería una trampa,
+no un avance a medias.
+
+Y de paso, `correr_motor.js` **dejó de duplicar la lógica de los catálogos**.
+Traía su propia copia de `opcionesDelCorte_` —los alias, los niveles, las
+agrupaciones, la lista blanca de centros—, unas 60 líneas. Ahora carga
+`04_Catalogos.gs` y `31_Opciones.gs` tal cual y solo sustituye `catalogo_()`,
+que es la única función que habla con la hoja. Esa copia era exactamente la
+enfermedad que el proyecto vino a curar.
+
+**Verificado:**
+
+- el paquete de agosto pasa `validar_paquete.js`, y los 11 casos rotos siguen
+  siendo rechazados
+- correr con `--catalogos` da **exactamente lo mismo** que correr con las semillas
+  (cuando el archivo trae las mismas reglas, que es la prueba de que el formato
+  no pierde nada)
+- el motor es **determinista**: dos corridas del mismo archivo dan las siete
+  tablas idénticas — lo único que cambia entre corridas es `Control.revision`,
+  que *es* la hora
+- la cadena completa del cuaderno —aligerar → armar fuentes → motor → paquete—
+  corre de punta a punta y da los números conocidos
+
+#### Los pasos originales
 
 - `correr_motor.js` emite el paquete con el formato del contrato —ya lo hace a
   medias— y acepta un `catalogos.json` en vez de las semillas.
