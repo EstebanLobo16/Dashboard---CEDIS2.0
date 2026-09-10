@@ -55,7 +55,7 @@ pestaña **Fuentes** del catálogo. Si un archivo cambia de nombre y deja de
 encontrarse, se ajusta ahí — no en el código.
 
 **Antes de subir las finalizaciones**, córrelas por
-`pipeline/celda_aligerar_csv.py`: los deja en unos 17 MB en vez de 117, sin
+`pipeline/aligerar_cedis.py`: los deja en unos 17 MB en vez de 117, sin
 perder nada (incluidas `Fecha Contratación` y `Fecha Asignación Puesto`, el
 respaldo para cuando el Detalle Colaborador no trae a la persona).
 
@@ -85,7 +85,7 @@ los archivos y publica. Solo lo ven los administradores.
 ### Si el motor no puede
 
 El cuaderno de Colab sigue siendo camino válido. Genera el paquete con
-`pipeline/celda_paquete_cobranza.py` y súbelo con **Actualizar datos**. Pasa por
+`pipeline/celda_paquete.py` y súbelo con **Actualizar datos**. Pasa por
 las mismas validaciones.
 
 ---
@@ -122,7 +122,7 @@ crudos y los disparadores.
 | Correo: *Faltan datos para el corte* | El día 11 no estaban todos los archivos | Consíguelos y déjalos en *Datos crudos*. Si llegan tarde, procesa a mano |
 | Correo: *NO se pudo procesar* | El corte falló | El tablero sigue mostrando el mes anterior. Corre `diagnostico()`; el correo trae el error |
 | *No encontré ningún archivo que combine con…* | El archivo no está, o cambió de nombre | Revisa la carpeta y el `patron` en `Fuentes` |
-| *No se pudo convertir … a hoja de cálculo* | Un archivo demasiado grande | Pásalo por `celda_aligerar_csv.py` |
+| *No se pudo convertir … a hoja de cálculo* | Un archivo demasiado grande | Pásalo por `aligerar_cedis.py` |
 | *El paquete no cuadra consigo mismo* | Las sumas no coinciden | **No se publicó nada.** Vuelve a procesar; si sigue, avisa |
 | *Tu cuenta no tiene permiso* | No estás en `Administradores` | Que un administrador te agregue |
 | *Ya hay un corte procesándose* | Dos a la vez | Espera unos minutos |

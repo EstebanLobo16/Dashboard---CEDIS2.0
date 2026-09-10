@@ -22,7 +22,7 @@
  * `pestanaMasReciente_()` y `filaDelEncabezado_()`, que existían solo para la
  * Planta. Ver docs/06-plan-cedis.md §3.1.
  *
- * Los dos CSV los produce `pipeline/celda_aligerar_csv.py` a partir de los
+ * Los dos CSV los produce `pipeline/aligerar_cedis.py` a partir de los
  * archivos que entrega el área: 200 MB en tres archivos de 25 columnas quedan en
  * 33 MB en dos de 11 y 5. No es una comodidad — un solo archivo de 90 MB queda
  * pegado al límite de conversión de Drive.
@@ -146,7 +146,7 @@ function comoHojaDeCalculo_(archivo, carpetaTrabajo) {
     throw new Error(
       `No se pudo convertir "${archivo.getName()}" a hoja de cálculo: ${error.message}. ` +
       `Si el archivo pesa más de 100 MB, pídelo con menos columnas o córtalo antes ` +
-      `(ver pipeline/celda_aligerar_csv.py).`
+      `(ver pipeline/aligerar_cedis.py).`
     );
   }
 }
@@ -387,7 +387,7 @@ function leerPadron_(crudos, trabajo, diagnostico) {
   if (!filas.length) {
     throw new Error(
       'El archivo del padrón no trajo ni una fila con "Número Persona". Revisa que sea el ' +
-      'que produce pipeline/celda_aligerar_csv.py y no uno de los CSV originales.'
+      'que produce pipeline/aligerar_cedis.py y no uno de los CSV originales.'
     );
   }
   diagnostico.conteos.padronLeido = filas.length;

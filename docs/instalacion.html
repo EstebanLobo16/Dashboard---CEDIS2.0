@@ -326,7 +326,7 @@
           </tbody>
         </table></div>
         <div class="nota ojo"><span>ANTES</span><div>
-          Pasa las finalizaciones por <code>pipeline/celda_aligerar_csv.py</code> en el Colab: las
+          Pasa las finalizaciones por <code>pipeline/aligerar_cedis.py</code> en el Colab: las
           deja en <strong>15 MB en vez de 117</strong>, sin perder nada. Los archivos muy grandes
           hacen que la conversión a hoja de cálculo falle.
         </div></div>
@@ -424,7 +424,7 @@
         <tr><td><b>Configuración pendiente. Ejecuta la función instalar</b></td><td>Se saltó el paso 5, o el manifiesto no tenía los permisos. Repite 2 y 5</td></tr>
         <tr><td><b>Drive is not defined</b></td><td>Falta la API de Drive. Vuelve al paso 2</td></tr>
         <tr><td><b>No encontré ningún archivo que combine con…</b></td><td>El archivo no está en <em>Datos crudos</em>, o cambió de nombre. Revisa la pestaña <code>Fuentes</code> del catálogo</td></tr>
-        <tr><td><b>No se pudo convertir … a hoja de cálculo</b></td><td>Archivo demasiado grande. Pásalo por <code>celda_aligerar_csv.py</code></td></tr>
+        <tr><td><b>No se pudo convertir … a hoja de cálculo</b></td><td>Archivo demasiado grande. Pásalo por <code>aligerar_cedis.py</code></td></tr>
         <tr><td><b>Tu cuenta no tiene permiso para publicar</b></td><td>No estás en <code>Administradores</code>. Corre <code>agregarAdministrador("tu@coppel.com")</code></td></tr>
         <tr><td><b>El tablero abre en blanco</b></td><td>Casi siempre un HTML con el nombre mal. Revisa que sean <code>Index</code>, <code>JavaScript</code> y <code>Stylesheet</code>, sin <code>.html</code></td></tr>
         <tr><td><b>Se acabó el tiempo de ejecución</b></td><td>Vuelve a lanzarlo: las conversiones ya hechas se reutilizan y el segundo intento es mucho más rápido</td></tr>

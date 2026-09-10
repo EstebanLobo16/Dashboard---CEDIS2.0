@@ -4,8 +4,7 @@ Réplica del tablero de Cobranza, que está completo y publicando en producción
 Almacén, catálogos, control de administradores, motor de proceso, aplicación web,
 histórico navegable y automatización: todo eso viene heredado y funcionando.
 
-Estado: **etapas 1 a 5 de 7** · la identidad, la ingesta, los catálogos, las reglas
-y el tablero. Lo que falta —la ingesta, las
+Estado: **etapas 1 a 6 de 7**. Falta el ensayo dentro de Apps Script. Lo que falta —la ingesta, las
 semillas y el ensayo— está en **`docs/06-plan-cedis.md`**.
 
 > `02_Semillas.gs` ya trae los catálogos de CEDIS y las cinco decisiones del área
@@ -107,7 +106,7 @@ Si se ve bien, `procesarCorte()` publica. Desde la etapa 3, el botón
 *Procesar corte* hace lo mismo.
 
 **Camino alterno.** El cuaderno de Colab con la celda
-`pipeline/celda_paquete_cobranza.py` genera un `.json` que se publica con
+`pipeline/celda_paquete.py` genera un `.json` que se publica con
 `publicarPaquete(contenido)`. Sirve de respaldo si el motor falla.
 
 Los dos pasan por el mismo validador: el motor no puede publicar nada que un

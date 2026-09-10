@@ -24,7 +24,7 @@ unzip "Archivos base/Archivos_alimentacion.zip" -d "Archivos base/crudos/"
 ```
 
 **No los subas así a la carpeta de datos crudos de Drive.** Pásalos primero por
-`pipeline/celda_aligerar_csv.py`, que los deja en dos archivos de 2.4 y 30.5 MB.
+`pipeline/aligerar_cedis.py`, que los deja en dos archivos de 2.4 y 30.5 MB.
 Ver `docs/06-plan-cedis.md`, etapa 6.
 
 ## Cuidado al mover este archivo

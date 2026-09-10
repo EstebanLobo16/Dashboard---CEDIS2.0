@@ -338,7 +338,7 @@ Y tres cosas que no están en `00_Config.gs` y hay que buscar a mano:
 
 `01_Esquema.gs` cambia en **una** columna: `tipo_cobranza` → `tipo_centro`, en
 `Centro`. Hay que tocarla también en `30_Motor.gs` (4 sitios) y en
-`pipeline/celda_paquete_cobranza.py`.
+`pipeline/celda_paquete.py`.
 
 Se hizo un poco más de lo escrito, y a propósito. En vez de cambiar «Cobranza»
 por «CEDIS» en cada archivo, **la identidad se movió a `CONFIG`**: el prefijo de
@@ -353,7 +353,7 @@ cadena vieja mintiendo en una pantalla.
 
 `01_Esquema.gs` cambia en **una** columna: `tipo_cobranza` → `tipo_centro`, en
 `Centro`. Se tocó también en `30_Motor.gs` (4 sitios) y en
-`pipeline/celda_paquete_cobranza.py`.
+`pipeline/celda_paquete.py`.
 
 De paso, `pipeline/validar_paquete.js` apuntaba con ruta absoluta al repo de
 Cobranza (`/home/user/Dashboard---cobranza-2.0/src`): en este repo no corría. Ya
@@ -633,7 +633,7 @@ La llave de deduplicación ahora incluye el estatus, así que solo se van las fi
 que de verdad sobran. Cuesta 42,319 filas y 3.5 MB más; el motor sigue contando
 cada par una sola vez porque hace el OR él mismo, en `indiceFinalizaciones_`.
 
-> ⚠ **Esto aplica igual a `celda_aligerar_csv.py` en la etapa 6.** Es la misma
+> ⚠ **Esto aplica igual a `aligerar_cedis.py` en la etapa 6.** Es la misma
 > operación sobre los mismos archivos, y es exactamente la familia de error que ya
 > costó horas en Cobranza: un recorte que tira una columna y deja a cientos de
 > personas fuera del corte sin explicación.
@@ -695,11 +695,11 @@ meses y **la gráfica mensual dibujaba cuatro barras iguales** — precisamente 
 que hay que poder ver antes de desplegar. Ahora escala solo los completados y la
 gráfica va 50% · 53% · 55% · 68%.
 
-### Etapa 6 · El aligerado · 1 día
+### Etapa 6 · El aligerado · 1 día · **HECHA**
 
 Los tres CSV suman **200 MB**. `CEDIS P1.csv` pesa 96 MB y `CEDIS P2.csv` 88 MB,
 contra un límite de conversión de Drive de 100 MB: pasan, pero por poco.
-`celda_aligerar_csv.py` deja de ser opcional y **pasa a ser obligatoria**.
+`aligerar_cedis.py` deja de ser opcional y **pasa a ser obligatoria**.
 
 Y cambia de forma. En Cobranza emitía **un** archivo de 7 columnas. Aquí eso no
 alcanza: como el padrón sale del propio CSV, harían falta 14 columnas, y el
@@ -732,10 +732,49 @@ completadas — 3.1 puntos de avance. Ver la etapa 4. La llave correcta es
 `(persona, curso, ¿Lo Completó?, Sub Estatus)`, y con ella el archivo de
 finalizaciones queda en 468,130 filas y 34.0 MB en vez de 425,811 y 30.5.
 
-El script tiene que **abortar** si alguna columna queda vacía — es exactamente el
-error que costó horas en Cobranza, cuando el recorte tiró `Fecha Contratación` y
-1,281 personas se cayeron del corte sin explicación. Y tiene que verificar que el
-padrón salga con las 15,252 personas y ninguna sin fecha.
+El script **aborta** si alguna revisión falla. Son cinco, y las cinco están
+aprendidas a golpes:
+
+| Revisión | Qué evita |
+|---|---|
+| Las columnas existen en cada archivo de entrada | Que el reporte cambie un nombre de columna y nadie se entere |
+| Ninguna columna queda vacía | El error que en Cobranza dejó a 1,281 personas fuera del corte sin explicación |
+| El padrón trae a todas las personas, una vez cada una | Perder gente al concentrar |
+| Todas con sus **dos fechas** | Sin la de asignación de puesto no se puede decidir qué cursos aplican |
+| **Ninguna finalización completada se pierde al deduplicar** | Los 9,161 de la etapa 4 |
+
+La última es la que importa. Se comprobó quitando la corrección: el script
+detecta las 9,161 y **aborta** en vez de escribir archivos que se ven bien.
+
+#### La prueba de que no se pierde nada
+
+`armar_fuentes_cedis.py` ahora acepta también los dos archivos aligerados, así
+que el motor se puede correr por los dos caminos y comparar. Sobre los datos de
+agosto, **las siete tablas del corte salen idénticas**:
+
+```
+Resumen  1 · Region  26 · Centro  727 · Curso  27
+Colaborador  14,806 · FiltroCurso  24,645 · Control  1     todas idénticas
+```
+
+Aligerar no cambia un solo número.
+
+#### Un tercer defecto, que solo apareció al comparar
+
+Al principio la comparación dio **dos tablas distintas**. `Colaborador` era el
+mismo contenido en otro orden —el padrón aligerado sale ordenado por número de
+persona y el crudo en el orden del archivo—, y eso no importa: el orden de las
+filas no es parte del contrato.
+
+Pero `Curso` traía un nombre distinto: *"Práctica de Conductor al Volante"* en un
+camino y *"...al volante"* en el otro. Los dos planes escriben ese curso con
+distinta mayúscula, el alias los une, y **el nombre que se publicaba era el del
+primer colaborador que resultara tener ese curso** — o sea, dependía del orden
+del archivo del padrón. Reordenar el archivo cambiaba una etiqueta del tablero
+sin que nada más se moviera, que es de esas cosas que nadie logra explicar tres
+meses después.
+
+Ahora gana el primer plan que lo declare, y el padrón deja de opinar.
 
 ### Etapa 7 · El ensayo · 2 días
 
@@ -804,9 +843,9 @@ Y tres que son de CEDIS:
 | 3 · Semillas y parámetros | ~~2~~ **hecha** | 1 |
 | 4 · Motor | ~~1~~ **hecha** | 2, 3 |
 | 5 · Tablero | ~~1~~ **hecha** | 4 |
-| 6 · Aligerado | 1 | 0 |
+| 6 · Aligerado | ~~1~~ **hecha** | 0 |
 | 7 · Ensayo | 2 | todas |
-| | **3.5 días restantes** | |
+| | **2.5 días restantes** | |
 
 **Ya no hay nada esperando insumos del área:** las cinco decisiones están tomadas
 y P2 llegó. Lo que queda son las reglas (etapa 4), la interfaz (5), el aligerado

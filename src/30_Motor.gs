@@ -289,6 +289,25 @@ function indexarPlan_(reglas, diagnostico) {
   const nombresPorClave = {};
   let duplicados = 0;
 
+  // Primero, el nombre con el que se va a publicar cada curso.
+  //
+  // Cuando dos planes escriben distinto el mismo curso —"Introducción a la
+  // Seguridad y Salud Laboral CEDIS" y "...Laboral EN CEDIS"— el alias los une
+  // en una sola clave, pero el NOMBRE visible salía del primer colaborador que
+  // resultara tener ese curso. O sea: dependía del orden del archivo del padrón.
+  // Reordenar el archivo cambiaba una etiqueta del tablero sin que nada más se
+  // moviera, que es de esas cosas que nadie logra explicar tres meses después.
+  //
+  // Gana el primer plan que lo declare (`orden` los trae en ese orden), y el
+  // padrón deja de opinar.
+  const canonico = {};
+  reglas.forEach((regla) => {
+    if (canonico[regla.cursoClave] === undefined) canonico[regla.cursoClave] = regla.curso;
+    if (!nombresPorClave[regla.cursoClave]) nombresPorClave[regla.cursoClave] = {};
+    nombresPorClave[regla.cursoClave][regla.curso] = true;
+  });
+  reglas.forEach((regla) => { regla.curso = canonico[regla.cursoClave]; });
+
   reglas.forEach((regla) => {
     const llave = `${regla.puestoClave}|${regla.cursoClave}`;
     // Un puesto que estuviera en los dos planes recibiría el mismo curso dos
@@ -296,9 +315,6 @@ function indexarPlan_(reglas, diagnostico) {
     // siendo un solo curso: la persona lo toma una vez.
     if (vistos[llave]) { duplicados += 1; return; }
     vistos[llave] = true;
-
-    if (!nombresPorClave[regla.cursoClave]) nombresPorClave[regla.cursoClave] = {};
-    nombresPorClave[regla.cursoClave][regla.curso] = true;
 
     if (!porPuesto[regla.puestoClave]) porPuesto[regla.puestoClave] = [];
     porPuesto[regla.puestoClave].push(regla);
@@ -312,7 +328,7 @@ function indexarPlan_(reglas, diagnostico) {
     if (nombres.length < 2) return;
     diagnostico.avisos.push(
       `Los cursos ${nombres.map((n) => `"${n}"`).join(' y ')} son el mismo (los une un alias) y ` +
-      `se publican como uno solo, con el nombre "${nombres[0]}".`
+      `se publican como uno solo, con el nombre "${canonico[clave]}".`
     );
   });
 

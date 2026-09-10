@@ -4,8 +4,8 @@ Lo que corre fuera de Apps Script.
 
 | Archivo | Qué es |
 |---|---|
-| `celda_aligerar_csv.py` | Deja los CSV de finalizaciones en ~17 MB en vez de 117, sin perder nada |
-| `celda_paquete_cobranza.py` | Reemplazo de la sección 10 del cuaderno de Colab. Emite el paquete en el formato del contrato |
+| `aligerar_cedis.py` | Deja los tres CSV de CEDIS en dos archivos de 36 MB en vez de 200, sin perder nada |
+| `celda_paquete.py` | Reemplazo de la sección 10 del cuaderno de Colab. Emite el paquete en el formato del contrato |
 | `validar_paquete.js` | Corre el validador del tablero contra un paquete real, sin necesidad de subirlo |
 | `correr_motor.js` | Corre el motor de `30_Motor.gs` fuera de Apps Script, contra fuentes reales |
 | `montar_tablero.js` | Arma el tablero en un HTML abrible, con los datos de un paquete real |
@@ -15,28 +15,36 @@ Lo que corre fuera de Apps Script.
 
 ## Aligerar los archivos crudos
 
-Córrela antes de subir los CSV a la carpeta de datos crudos. Deja los tres
-archivos en uno solo.
+Córrela **antes** de subir los CSV a la carpeta de datos crudos. No es opcional:
+dos de los tres archivos rozan los 100 MB, que es el límite de conversión de
+Drive.
+
+```bash
+python3 pipeline/aligerar_cedis.py <carpeta-con-los-crudos>
+```
 
 | | Filas | Peso |
 |---|---:|---:|
-| Los 3 originales | 300,883 | 117.0 MB |
-| Solo las 7 columnas necesarias | 300,883 | 22.1 MB |
-| **+ sin repetir persona+curso** | **237,251** | **16.9 MB** |
+| Los 3 originales | 517,615 | 199.7 MB |
+| `cedis_padron.csv` | 15,252 | 2.4 MB |
+| `cedis_finalizaciones.csv` | 468,130 | 34.0 MB |
+| | | **36.4 MB** |
 
-El peso está en las columnas, no en las filas: los CSV traen 25 columnas y el
-proceso usa 7 (las 5 de siempre más `Fecha Contratación` y
-`Fecha Asignación Puesto`, que desde que la vigencia se cuenta por asignación de
-puesto son el respaldo cuando el Detalle Colaborador no trae a la persona).
-Quitar el 21% de las filas ahorra unos 5 MB; quitar 18 de 25 columnas ahorra
-casi 95. La celda hace las dos cosas y verifica que no se pierda ninguna persona
-del puente de identificadores, ni que las dos columnas de fecha queden vacías.
+El peso está en las columnas, no en las filas: los CSV traen 25 y el proceso usa
+14. Y son dos archivos y no uno porque el padrón es una tabla de personas y las
+finalizaciones una de personas por curso: juntarlas repite el nombre, el
+departamento y las dos fechas de cada quien en cada una de sus ~28 filas, y da
+90 MB — otra vez pegado al límite.
 
-Lo ideal sería que el área exportara desde el origen solo esas 7 columnas.
+La llave de deduplicación **incluye el estatus**. Deduplicar por (persona, curso)
+a secas tira el estatus de las repeticiones, y con él 9,161 finalizaciones
+completadas y 3.1 puntos de avance. El script lo revisa y aborta si pasa.
+
+Lo ideal sería que el área exportara desde el origen solo esas 14 columnas.
 
 ## Generar un paquete
 
-Pega `celda_paquete_cobranza.py` en el cuaderno, en lugar de su sección 10, y
+Pega `celda_paquete.py` en el cuaderno, en lugar de su sección 10, y
 corre el cuaderno completo. Deja `cobranza-<AAAA-MM>.json` en la carpeta de
 resultados.
 

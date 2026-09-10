@@ -72,11 +72,45 @@ COLUMNAS_PADRON = {
 }
 
 
+def leer_aligerados(carpeta):
+    """Los dos archivos que produce aligerar_cedis.py, que son los que van a Drive."""
+    ruta_padron = os.path.join(carpeta, 'cedis_padron.csv')
+    ruta_final = os.path.join(carpeta, 'cedis_finalizaciones.csv')
+    if not (os.path.exists(ruta_padron) and os.path.exists(ruta_final)):
+        return None
+
+    padron = []
+    with open(ruta_padron, newline='', encoding='utf-8-sig') as fh:
+        for fila in csv.DictReader(fh):
+            padron.append({destino: fila.get(origen, '').strip()
+                           for origen, destino in COLUMNAS_PADRON.items()})
+    finalizaciones = []
+    with open(ruta_final, newline='', encoding='utf-8-sig') as fh:
+        for fila in csv.DictReader(fh):
+            finalizaciones.append({
+                'persona': fila['Número Persona'].strip(),
+                'colaborador': fila['Número Colaborador'].strip(),
+                'curso': fila['Nombre Curso'].strip(),
+                'completo': fila['¿Lo Completó?'].strip(),
+                'subEstatus': fila['Sub Estatus Aprendizaje'].strip(),
+            })
+    print(f'  cedis_padron.csv                 {len(padron):>9,} filas')
+    print(f'  cedis_finalizaciones.csv         {len(finalizaciones):>9,} filas')
+    return padron, finalizaciones
+
+
 def leer_csv(carpeta):
+    # Si están los dos archivos aligerados, se usan: son los que el proceso sube
+    # a Drive, y correr el motor contra ellos es lo que prueba que el aligerado
+    # no perdió nada por el camino.
+    aligerados = leer_aligerados(carpeta)
+    if aligerados:
+        return aligerados
+
     padron, finalizaciones, vistos = {}, [], set()
     archivos = sorted(glob.glob(os.path.join(carpeta, 'CEDIS P*.csv')))
     if not archivos:
-        sys.exit(f'No encontré ningún "CEDIS P*.csv" en {carpeta}')
+        sys.exit(f'No encontré ningún "CEDIS P*.csv" ni los dos aligerados en {carpeta}')
 
     for ruta in archivos:
         filas = 0

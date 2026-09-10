@@ -220,9 +220,9 @@ const SEMILLAS = Object.freeze({
     ['GERENTE DE RACK', 'Gerente Operación', ''],
     ['GERENTE DE MANTENIMIENTO', 'Gerente Operación', ''],
     ['GERENTE DE OPERACION CEDIS', 'Gerente Operación', ''],
+    ['GERENTE DE ZONA CEDIS', 'Gerente Operación', 'Confirmado por el área: SÍ lleva los cuatro cursos de seguridad operativa (maquinaria, señalización, incendios, ergonomía), así que va en la banda que los recibe y no en "Gerente de Zona/Gte Sr", que es donde lo pondría su nombre. Son 43 personas.'],
     ['GERENTE DE PRODUCTO', 'Gerente Operación', 'Puesto corporativo, no de piso. Mi lectura, por confirmar. Hoy no tiene a nadie.'],
     ['GERENTE DE PROYECTOS', 'Gerente Operación', 'Puesto corporativo, no de piso. Mi lectura, por confirmar. Hoy no tiene a nadie.'],
-    ['GERENTE DE ZONA CEDIS', 'Gerente de Zona/Gte Sr', 'EL ÚNICO RENGLÓN QUE MUEVE UN NÚMERO HOY: 43 personas que en esta banda no reciben los 4 cursos de seguridad operativa.'],
     ['GERENTE SR DE SOLUCIONES DE TI', 'Gerente de Zona/Gte Sr', '"Gte Sr" está en el nombre de la banda. Hoy no tiene a nadie.'],
     ['GERENTE SR DE PROYECTOS TRANSVERSALES', 'Gerente de Zona/Gte Sr', '"Gte Sr" está en el nombre de la banda. Hoy no tiene a nadie.'],
     ['GERENTE SR DE INGENIERIA Y PRODUCTIVIDAD DE CEDIS', 'Gerente de Zona/Gte Sr', '"Gte Sr" está en el nombre de la banda. Hoy no tiene a nadie.'],
@@ -304,18 +304,18 @@ const SEMILLAS = Object.freeze({
   // tipo "(12)" o los rangos de fecha en el nombre no rompan nada.
   //
   // Son cuatro, no las cinco de Cobranza: CEDIS no tiene Planta por Posiciones
-  // ni catálogo de centros. Los dos CSV los produce celda_aligerar_csv.py; los
+  // ni catálogo de centros. Los dos CSV los produce aligerar_cedis.py; los
   // originales que entrega el área NO se suben tal cual (200 MB en tres
   // archivos, dos de ellos pegados al límite de conversión de Drive).
   Fuentes: [
     ['padron', 'cedis?padron*.csv', 'SI', '',
       'El censo del área: una fila por persona, con región, centro de costo, área, ' +
       'departamento, puesto, tipo de posición y las dos fechas. Sustituye a la Planta por ' +
-      'Posiciones de Cobranza. Lo produce pipeline/celda_aligerar_csv.py.'],
+      'Posiciones de Cobranza. Lo produce pipeline/aligerar_cedis.py.'],
     ['finalizaciones', 'cedis?finalizaciones*.csv', 'SI', '',
       'Una fila por persona y curso, con "¿Lo Completó?" y "Sub Estatus Aprendizaje". Se ' +
       'aceptan varios archivos si el área los deja por separado. Lo produce ' +
-      'pipeline/celda_aligerar_csv.py.'],
+      'pipeline/aligerar_cedis.py.'],
     ['pdt_operacion', '*operaci?n*.xlsx', 'SI', '(4 pestañas)',
       'Cursos_asignados, Colaboradores_asignados, Cursos_especificos, Colaboradores_especificos.'],
     ['pdt_gerencial', '*gerencial*.xlsx', 'SI', '(4 pestañas)',

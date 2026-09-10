@@ -185,7 +185,7 @@ Las once formas de romperlo están probadas contra el paquete real de agosto.
 
 ### Cómo se genera
 
-- **Hoy (etapa 1):** la celda `pipeline/celda_paquete_cobranza.py` reemplaza la
+- **Hoy (etapa 1):** la celda `pipeline/celda_paquete.py` reemplaza la
   sección 10 del cuaderno. Mismos números de siempre, formato nuevo.
 - **Desde la etapa 2:** el motor lo arma directo desde los crudos de Drive, ya con
   las correcciones aplicadas.

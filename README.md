@@ -3,7 +3,7 @@
 Réplica del tablero de Cobranza sobre datos de CEDIS, íntegramente en Google
 Apps Script. Universidad Corporativa · Coppel.
 
-> **En construcción · etapas 1 a 5 de 7 terminadas.** El código heredado de Cobranza
+> **En construcción · etapas 1 a 6 de 7 terminadas.** El código heredado de Cobranza
 > está completo y probado en producción; lo que falta es adaptarlo a las fuentes
 > y las reglas de CEDIS. El plan, con los datos ya medidos, está en
 > **[`docs/06-plan-cedis.md`](docs/06-plan-cedis.md)**.
@@ -12,8 +12,8 @@ Apps Script. Universidad Corporativa · Coppel.
 > con todas las reglas del área puestas: **14,806 colaboradores, 68.2% de avance,
 > conciliación correcta**, en 5.9 segundos. Ver `docs/06-plan-cedis.md` §6.
 >
-> El tablero ya se abre con esos datos en un navegador. Falta preparar los
-> archivos para Drive (etapa 6) y correrlo dentro de Apps Script (7).
+> El tablero ya se abre con esos datos en un navegador y los archivos para
+> Drive ya se preparan solos. Falta correrlo dentro de Apps Script (etapa 7).
 
 ## Por dónde empezar
 
@@ -165,7 +165,7 @@ arreglos de esta sesión:
 
 | Qué estaba mal | Síntoma | Arreglo |
 |---|---|---|
-| `celda_aligerar_csv.py` recortaba el CSV a 5 columnas y tiraba `Fecha Contratación` y `Fecha Asignación Puesto` | El respaldo por finalizaciones nunca se activaba: 1,281 personas sin fecha en vez de 1,139 | Se agregaron las dos columnas y una verificación que aborta si quedan vacías (`e49e988`) |
+| `aligerar_cedis.py` recortaba el CSV a 5 columnas y tiraba `Fecha Contratación` y `Fecha Asignación Puesto` | El respaldo por finalizaciones nunca se activaba: 1,281 personas sin fecha en vez de 1,139 | Se agregaron las dos columnas y una verificación que aborta si quedan vacías (`e49e988`) |
 | La caché de conversiones se buscaba por `~archivo.xlsx`, pero **Drive le quita la extensión al convertir** | No encontraba nunca su propia conversión: reconvertía los 5 archivos en cada corrida y acumulaba duplicados | Se busca con y sin extensión, y se crea sin ella (`d893ec3`) |
 | El escritor del diagnóstico no agrandaba la pestaña | Reventaba al escribir 1,139 filas en una pestaña de 1000 | Crece la pestaña antes de escribir (`ab60f3f`) |
 | Un intento de invalidar la caché por fecha | Reconvertía todo en cada corrida y la dejaba sin tiempo, sin ningún error | Revertido; el remedio ahora es explícito: `limpiarConversiones()` (`2037880`) |
