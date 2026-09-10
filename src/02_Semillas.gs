@@ -72,6 +72,15 @@ const SEMILLAS = Object.freeze({
       'dias_en_puesto >= minimo_del_rango por este valor.'],
     ['NUEVO_INGRESO_DIAS', '90', 'numero',
       'Debajo de cuántos días laborados se marca a un colaborador como nuevo ingreso.'],
+    ['ETIQUETA_CENTRO', '', 'texto',
+      'Palabra que se antepone al centro en el tablero. Vacío para CEDIS, porque el ' +
+      'departamento ya se nombra solo ("07 CEDIS CROSS OAXC 02") y anteponerle "Centro" ' +
+      'estorba. Un área cuyo centro sea un número —Cobranza, con "500306"— escribe aquí ' +
+      '"Centro" y la recupera.'],
+    ['OTROS_REPORTES', '', 'texto',
+      'Los otros tableros del selector de reportes, con la forma ' +
+      '"Cobranza=https://script.google.com/.../exec, CATd=https://.../exec". Cada área es un ' +
+      'despliegue distinto, así que enlazarlos es conocer su URL. Vacío = este es el único.'],
     ['PERIODO', '', 'texto',
       'Periodo a procesar en formato AAAA-MM. Vacío = el mes anterior al día en que se corre.'],
     ['FECHA_CORTE', '', 'fecha',

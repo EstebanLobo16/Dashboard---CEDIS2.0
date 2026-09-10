@@ -54,6 +54,16 @@ function getDashboardData(peticion) {
     // llevar el nombre del formato escrito duro y se desincroniza de CONFIG.
     packageFormat: CONFIG.paquete.formato,
     packageVersion: CONFIG.paquete.version,
+    // Cómo se antepone el centro en el tablero. La etiqueta es OPCIONAL y por
+    // omisión no hay ninguna: en CEDIS el departamento ya se nombra solo
+    // ("07 CEDIS CROSS OAXC 02") y anteponerle "Centro" estorba. Un área cuyo
+    // centro sea un número —Cobranza, con "500306"— escribe "Centro" en el
+    // catálogo y la recupera.
+    //
+    // El valor por omisión va vacío a propósito: `parametro_` no distingue entre
+    // "no está" y "está en blanco", así que si el default fuera "Centro" no
+    // habría forma de pedir que no haya etiqueta.
+    centroLabel: parametro_('ETIQUETA_CENTRO', ''),
     generatedAt: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss"),
     canUpdate: puedePublicar_(),
   };
@@ -62,7 +72,7 @@ function getDashboardData(peticion) {
   if (!resumen.length) {
     return Object.assign(base, {
       empty: true, summary: null, control: {}, periods: [],
-      regions: [], centros: [], courses: [], positions: [], planes: [], monthly: [],
+      regions: [], courses: [], positions: [], planes: [], monthly: [],
     });
   }
 
@@ -70,9 +80,11 @@ function getDashboardData(peticion) {
   const periodo = solicitado && solicitado !== vigente ? solicitado : vigente;
   const esVigente = periodo === vigente;
 
+  // Mismas pestañas para un mes cerrado que para el vigente: sin `Centro`, que
+  // son 727 filas que la página no abre. Ver tablasDelCorte_().
   const tablas = esVigente
     ? tablasDelCorte_(corte, periodo)
-    : agregadosDePeriodo_(periodo);
+    : agregadosDePeriodo_(periodo, ['Resumen', 'Region', 'Curso', 'FiltroCurso', 'Control']);
 
   const summary = (tablas.Resumen || []).pop();
   if (!summary) {
@@ -89,7 +101,6 @@ function getDashboardData(peticion) {
     cutoffDate: String(summary.fecha_corte || ''),
     periods: periodosDisponibles_(vigente),
     regions: (tablas.Region || []).sort(porAvance_),
-    centros: (tablas.Centro || []).sort(porAvance_),
     courses: (tablas.Curso || []).sort(porAvance_),
     // Los puestos salen de FiltroCurso y no de Colaborador: mismo resultado, una
     // tercera parte de las filas.
@@ -102,11 +113,18 @@ function getDashboardData(peticion) {
   });
 }
 
-/** Las seis pestañas del corte vigente, filtradas a su periodo. */
+/**
+ * Las pestañas del corte vigente que el tablero necesita, filtradas a su periodo.
+ *
+ * `Centro` NO está: son 727 filas por 12 columnas que la página recibía en cada
+ * carga y no abría nunca. El centro de una persona sale de su propia fila en la
+ * búsqueda, y los agregados por centro no se muestran en ninguna vista. Si algún
+ * día hay una vista de centros, se vuelve a pedir aquí.
+ */
 function tablasDelCorte_(corte, periodo) {
   const delCorte = (fila) => (!periodo || String(fila.periodo || '') === periodo);
   const tablas = {};
-  ['Resumen', 'Region', 'Centro', 'Curso', 'FiltroCurso', 'Control'].forEach((nombre) => {
+  ['Resumen', 'Region', 'Curso', 'FiltroCurso', 'Control'].forEach((nombre) => {
     tablas[nombre] = leerTabla_(corte, nombre).filter(delCorte);
   });
   return tablas;
@@ -129,12 +147,35 @@ function periodosDisponibles_(vigente) {
   }));
 }
 
+/**
+ * Los tableros entre los que se puede saltar desde el selector de reportes.
+ *
+ * Cada área es un proyecto y un despliegue distinto, así que enlazarlos es
+ * conocer su URL — un dato de la instalación, no del código. Vive en el
+ * parámetro OTROS_REPORTES con la forma:
+ *
+ *     Cobranza=https://script.google.com/…/exec, CATd=https://…/exec
+ *
+ * Vacío = este tablero es el único, y el selector enseña un solo renglón.
+ */
 function reportesDisponibles_() {
   const actual = ScriptApp.getService().getUrl() || '';
-  // Este reporte es el primero; los demás (Cobranza, CATd) entran aquí cuando
-  // existan, con la misma mecánica de salto entre despliegues del tablero de
-  // Tienda. Se enlazan por URL de despliegue, no por código compartido.
-  return [{ key: CONFIG.reporte, name: CONFIG.nombreReporte, url: actual, current: true }];
+  const propios = [{ key: CONFIG.reporte, name: CONFIG.nombreReporte, url: actual, current: true }];
+
+  return propios.concat(
+    String(parametro_('OTROS_REPORTES', '')).split(',')
+      .map((parte) => parte.trim())
+      .filter(Boolean)
+      .map((parte) => {
+        const i = parte.indexOf('=');
+        if (i === -1) return null;
+        const nombre = parte.slice(0, i).trim();
+        const url = parte.slice(i + 1).trim();
+        if (!nombre || !url) return null;
+        return { key: normalizar_(nombre), name: nombre, url, current: false };
+      })
+      .filter(Boolean)
+  );
 }
 
 /**

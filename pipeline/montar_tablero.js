@@ -22,23 +22,30 @@ Object.keys(paquete.hojas).forEach((nombre) => {
 const PERIODOS = ['2026-05', '2026-06', '2026-07', '2026-08'];
 const ESCALA = { '2026-05': 0.74, '2026-06': 0.78, '2026-07': 0.81, '2026-08': 1 };
 
+// La escala se aplica SOLO a los completados, no también a los asignados: si se
+// escalaran los dos, el avance saldría idéntico los cuatro meses y la gráfica
+// mensual dibujaría cuatro barras iguales — que es justo lo que hay que poder
+// ver antes de desplegar.
 function escalar(filas, periodo, campos) {
   const k = ESCALA[periodo];
+  const [asignados, completados] = campos;
   return filas.map((fila) => {
     const copia = Object.assign({}, fila, { periodo });
-    campos.forEach((c) => { copia[c] = Math.round(Number(fila[c] || 0) * k); });
-    copia.avance = copia[campos[0]] ? copia[campos[1]] / copia[campos[0]] : 0;
+    copia[completados] = Math.round(Number(fila[completados] || 0) * k);
+    const pendientes = campos[2];
+    if (pendientes) copia[pendientes] = Number(copia[asignados] || 0) - copia[completados];
+    copia.avance = copia[asignados] ? copia[completados] / copia[asignados] : 0;
     return copia;
   });
 }
 
 const historicoPorPestana = { Resumen: [], Region: [], Centro: [], Curso: [], FiltroCurso: [], Control: [] };
 PERIODOS.forEach((periodo) => {
-  historicoPorPestana.Resumen.push(...escalar(hojas.Resumen, periodo, ['cursos_asignados', 'cursos_completados']));
-  historicoPorPestana.Region.push(...escalar(hojas.Region, periodo, ['cursos_asignados', 'cursos_completados']));
-  historicoPorPestana.Centro.push(...escalar(hojas.Centro, periodo, ['cursos_asignados', 'cursos_completados']));
-  historicoPorPestana.Curso.push(...escalar(hojas.Curso, periodo, ['asignados', 'completados']));
-  historicoPorPestana.FiltroCurso.push(...escalar(hojas.FiltroCurso, periodo, ['asignados', 'completados']));
+  historicoPorPestana.Resumen.push(...escalar(hojas.Resumen, periodo, ['cursos_asignados', 'cursos_completados', 'cursos_pendientes']));
+  historicoPorPestana.Region.push(...escalar(hojas.Region, periodo, ['cursos_asignados', 'cursos_completados', 'cursos_pendientes']));
+  historicoPorPestana.Centro.push(...escalar(hojas.Centro, periodo, ['cursos_asignados', 'cursos_completados', 'cursos_pendientes']));
+  historicoPorPestana.Curso.push(...escalar(hojas.Curso, periodo, ['asignados', 'completados', 'pendientes']));
+  historicoPorPestana.FiltroCurso.push(...escalar(hojas.FiltroCurso, periodo, ['asignados', 'completados', 'pendientes']));
   historicoPorPestana.Control.push(...hojas.Control.map((f) => Object.assign({}, f, { periodo })));
 });
 // Que las regiones no se muevan todas igual, para ver deltas distintos.
@@ -62,7 +69,7 @@ const contexto = {
   ScriptApp: { getService: () => ({ getUrl: () => 'https://script.google.com/demo' }) },
 };
 vm.createContext(contexto);
-['00_Config.gs', '01_Esquema.gs', '10_Util.gs', '50_Historico.gs', '90_WebApp.gs']
+['00_Config.gs', '01_Esquema.gs', '02_Semillas.gs', '10_Util.gs', '50_Historico.gs', '90_WebApp.gs']
   .forEach((f) => vm.runInContext(fs.readFileSync(path.join(SRC, f), 'utf8'), contexto, { filename: f }));
 
 // abrir_/leerTabla_/leerColumnas_/puedePublicar_ hablan con Sheets; aquí sirven
@@ -71,6 +78,13 @@ vm.runInContext(`
   var _hojas = ${JSON.stringify(hojas)};
   var _historico = ${JSON.stringify(historicoPorPestana)};
   abrir_ = function (clave) { return { clave: clave }; };
+  // Los parámetros del catálogo. Se sirven desde las semillas, que es con lo que
+  // arranca la instalación, y así el tablero se ve con las reglas reales.
+  parametro_ = function (clave, porDefecto) {
+    var fila = SEMILLAS.Parametros.find(function (f) { return f[0] === clave; });
+    var valor = fila ? String(fila[1]).trim() : '';
+    return valor === '' ? (porDefecto === undefined ? '' : porDefecto) : valor;
+  };
   leerTabla_ = function (h, nombre) {
     if (h.clave === 'historico') return _historico[nombre] || [];
     return _hojas[nombre] || [];

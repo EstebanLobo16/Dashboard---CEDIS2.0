@@ -642,18 +642,58 @@ cada par una sola vez porque hace el OR él mismo, en `indiceFinalizaciones_`.
 de CEDIS, sin desplegar nada. El control algebraico cuadra: Colaborador y Curso
 suman lo mismo que el Resumen.
 
-### Etapa 5 · El tablero · 1 día
+### Etapa 5 · El tablero · 1 día · **HECHA**
 
-Estructura y CSS **sin cambios**. Solo textos y etiquetas:
+Estructura y CSS **sin cambios**, como estaba previsto. Lo que cambió:
 
-- «Centro» sigue diciendo Centro, pero muestra el departamento
-- La columna nueva `tipo_centro` en la vista de centros
-- 26 regiones en el ranking en vez de 15 — el panel ya pagina con `regionsMore`
-- `reportesDisponibles_()` en `90_WebApp.gs`: aquí es donde CEDIS y Cobranza se
-  enlazan, con la misma mecánica de salto entre despliegues del tablero de Tienda
+**1. La etiqueta del centro sale del catálogo.** El detalle por colaborador decía
+`Centro 07 CEDIS CROSS OAXC 02`, y esa palabra estorba cuando el valor ya se
+nombra solo. Ahora es el parámetro `ETIQUETA_CENTRO`, vacío para CEDIS:
 
-**Verificación:** `node pipeline/montar_tablero.js` arma el HTML abrible con datos
-reales de CEDIS, sin desplegar.
+```
+100174359 · 07 CEDIS CROSS OAXC 02 · 045 - DISTRIBUCION FORANEA
+```
+
+Un área cuyo centro sea un número —Cobranza, con `500306`— escribe `Centro` en el
+catálogo y la recupera. El valor por omisión va vacío a propósito: `parametro_`
+no distingue entre "no está" y "está en blanco", así que con `Centro` de default
+no habría forma de pedir que no haya etiqueta.
+
+**2. Los otros tableros también.** `reportesDisponibles_()` lee el parámetro
+`OTROS_REPORTES` con la forma `Cobranza=https://…/exec, CATd=https://…/exec`.
+Cada área es un despliegue distinto, así que enlazarlos es conocer su URL: un
+dato de la instalación, no del código. Vacío = este tablero es el único.
+
+**3. Las 26 regiones** entran en el ranking y en el filtro sin tocar nada: el
+panel ya paginaba. Verificado en el navegador — el filtro trae 26 y "Ver 21 más"
+despliega los 26 renglones.
+
+#### La vista de centros no existe
+
+El plan decía «la columna nueva `tipo_centro` en la vista de centros». Al abrir el
+tablero resultó que **esa vista no existe** —ni en CEDIS ni en Cobranza—, y sin
+embargo el servidor mandaba la tabla `Centro` entera en cada carga: **727 filas
+por 12 columnas que la página nunca abría**.
+
+Se dejó de mandar, para el corte vigente y para los meses cerrados. El HTML del
+tablero montado pasa de **1,020 KB a 166 KB**: el 84% de lo que viajaba era eso.
+El centro de cada persona sigue saliendo de su propia fila en la búsqueda, que es
+de donde salía siempre.
+
+Agregar la vista sería divergir del tablero de Cobranza, que es justo lo que este
+proyecto no quiere. Si algún día hace falta, se vuelve a pedir la pestaña en
+`tablasDelCorte_()` y ya.
+
+**Verificación:** `node pipeline/montar_tablero.js corte.json tablero.html` arma
+el HTML abrible con los datos reales de CEDIS y se abrió en un navegador de
+verdad: sin errores de consola, 26 regiones en el filtro y en el ranking, el
+detalle por colaborador paginando 90,514 pendientes, y los KPI con sus deltas.
+
+De paso, un defecto del propio arnés: `escalar()` multiplicaba asignados **y**
+completados por la misma constante, así que el avance salía idéntico los cuatro
+meses y **la gráfica mensual dibujaba cuatro barras iguales** — precisamente lo
+que hay que poder ver antes de desplegar. Ahora escala solo los completados y la
+gráfica va 50% · 53% · 55% · 68%.
 
 ### Etapa 6 · El aligerado · 1 día
 
@@ -763,10 +803,10 @@ Y tres que son de CEDIS:
 | 2 · Ingesta | ~~3~~ **hecha** | 1, 6 |
 | 3 · Semillas y parámetros | ~~2~~ **hecha** | 1 |
 | 4 · Motor | ~~1~~ **hecha** | 2, 3 |
-| 5 · Tablero | 1 | 4 |
+| 5 · Tablero | ~~1~~ **hecha** | 4 |
 | 6 · Aligerado | 1 | 0 |
 | 7 · Ensayo | 2 | todas |
-| | **4.5 días restantes** | |
+| | **3.5 días restantes** | |
 
 **Ya no hay nada esperando insumos del área:** las cinco decisiones están tomadas
 y P2 llegó. Lo que queda son las reglas (etapa 4), la interfaz (5), el aligerado

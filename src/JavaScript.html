@@ -532,7 +532,7 @@
     document.getElementById('nextPage').disabled = result.page >= result.totalPages;
 
     const body = result.rows.length
-      ? result.rows.map((row) => `<tr><td><strong>${escapeHtml(row.nombre)}</strong><small>${escapeHtml(row.numero_empleado)} · Centro ${escapeHtml(row.centro)}${row.nomenclatura ? ' · ' + escapeHtml(row.nomenclatura) : ''}</small></td><td>${escapeHtml(row.puesto)}</td><td>${escapeHtml(row.region)}</td><td>${escapeHtml(row.curso_pendiente)}</td></tr>`).join('')
+      ? result.rows.map((row) => `<tr><td><strong>${escapeHtml(row.nombre)}</strong><small>${escapeHtml(row.numero_empleado)} · ${escapeHtml(centroTexto(row.centro, row.nomenclatura))}</small></td><td>${escapeHtml(row.puesto)}</td><td>${escapeHtml(row.region)}</td><td>${escapeHtml(row.curso_pendiente)}</td></tr>`).join('')
       : '<tr><td colspan="4">No hay resultados.</td></tr>';
     table.innerHTML = `${EMPLOYEE_HEAD}<tbody>${body}</tbody>`;
   }
@@ -556,7 +556,7 @@
       return;
     }
     panel.innerHTML = rows.slice(0, 8).map((row) =>
-      `<button class="employee-suggestion" type="button" role="option" data-employee-name="${escapeHtml(row.nombre)}"><span><strong>${escapeHtml(row.nombre)}</strong><small>${escapeHtml(row.numero_empleado)} · Centro ${escapeHtml(row.centro || '—')}</small></span><small>${escapeHtml(row.curso_pendiente || '')}</small></button>`
+      `<button class="employee-suggestion" type="button" role="option" data-employee-name="${escapeHtml(row.nombre)}"><span><strong>${escapeHtml(row.nombre)}</strong><small>${escapeHtml(row.numero_empleado)} · ${escapeHtml(centroTexto(row.centro))}</small></span><small>${escapeHtml(row.curso_pendiente || '')}</small></button>`
     ).join('');
     panel.querySelectorAll('.employee-suggestion').forEach((button) => button.addEventListener('click', () => {
       input.value = button.dataset.employeeName || '';
@@ -601,6 +601,21 @@
   /** El nombre del área, tal como lo mandó el servidor. Nunca escrito duro. */
   function reportName() {
     return (state.data && state.data.reportName) || 'este reporte';
+  }
+
+  /**
+   * El centro de una persona, con la etiqueta que use su área.
+   *
+   * Cobranza necesita la palabra porque su centro es un número ("Centro
+   * 500306"); CEDIS no, porque el departamento ya se nombra solo ("07 CEDIS
+   * CROSS OAXC 02"). Lo decide el catálogo, no esta línea.
+   */
+  function centroTexto(centro, nomenclatura) {
+    const etiqueta = (state.data && state.data.centroLabel) || '';
+    const valor = String(centro || '').trim() || '—';
+    const partes = [(etiqueta ? etiqueta + ' ' : '') + valor];
+    if (nomenclatura) partes.push(String(nomenclatura));
+    return partes.join(' · ');
   }
 
   function choosePackage() {
