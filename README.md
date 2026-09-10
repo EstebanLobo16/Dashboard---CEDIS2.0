@@ -6,11 +6,14 @@ Apps Script. Universidad Corporativa · Coppel.
 > **En construcción · etapas 1 a 6 de 7 terminadas.** La séptima es instalarlo
 > en Apps Script: **[`docs/07-ensayo.md`](docs/07-ensayo.md)**.
 >
-> ⚠ **El corte no cabe en Apps Script.** `ensayarCorte()` pasa de 15 minutos sin
-> terminar, contra un límite de 30. El motor hace el mismo cálculo en **6
-> segundos** fuera de Google: el tiempo se va en mover 3.8 millones de celdas a
-> través de una hoja. El plan para sacarlo de ahí está en
-> **[`docs/08-plan-colab.md`](docs/08-plan-colab.md)**. El código heredado de Cobranza
+> **El ensayo de agosto corrió completo en Apps Script y cuadra.** Ver
+> [Qué está verificado](#qué-está-verificado-cedis), aquí abajo.
+>
+> ⚠ **Pero cabe apenas.** `ensayarCorte()` tardó **19 minutos** contra un límite
+> de 30, y `procesarCorte()` hace lo mismo *más* escribir siete pestañas. El
+> motor hace ese cálculo en **6 segundos** fuera de Google: el tiempo se va en
+> mover 3.8 millones de celdas a través de una hoja. El plan para sacarlo de ahí
+> está en **[`docs/08-plan-colab.md`](docs/08-plan-colab.md)**. El código heredado de Cobranza
 > está completo y probado en producción; lo que falta es adaptarlo a las fuentes
 > y las reglas de CEDIS. El plan, con los datos ya medidos, está en
 > **[`docs/06-plan-cedis.md`](docs/06-plan-cedis.md)**.
@@ -60,6 +63,47 @@ Apps Script. Universidad Corporativa · Coppel.
 | [`06-plan-cedis.md`](docs/06-plan-cedis.md) | **El plan de trabajo del tablero de CEDIS**: los datos medidos, las siete diferencias con Cobranza y las etapas |
 | [`07-ensayo.md`](docs/07-ensayo.md) | **La guía paso a paso para instalarlo y publicar el primer corte**, con los números que cada paso debe reproducir |
 | [`08-plan-colab.md`](docs/08-plan-colab.md) | **Mover el cálculo a Colab**, porque el corte no cabe en Apps Script: de dónde salen los archivos, dónde queda el paquete y qué pasa con el histórico |
+
+## Qué está verificado (CEDIS)
+
+El **ensayo de agosto 2026 corrió completo dentro de Apps Script y cuadra**, y
+reproduce **exactamente** —conteo por conteo— lo que da el motor corrido fuera de
+Google sobre los mismos archivos. Estos son los números de referencia: si una
+corrida futura no los reproduce, algo cambió.
+
+```
+14,806 colaboradores · 68.2% de avance · conciliación: correcta
+284,945 asignados · 194,425 completados · 90,520 pendientes
+
+padronLeido 15,252 − categoría 128 − sin puesto en el PDT 85
+            − fecha posterior al corte 233 = 14,806 ✓
+
+fechasCentinela: 76 · completadasPorSubEstatus: 7,224
+cursosEnFinalizaciones: 30 · cursosDelPlanSinFuente: 0
+puestosConPlan: 104 · personasSinPlan: 0 · reglasDePlan: 2,112
+centrosDeCostoFueraDelCatalogo: 0 · centrosConAtributosMezclados: 78
+origenFechaDePuesto: {padron: 15176, contratacion: 76, ninguno: 0}
+finalizacionesLeidas = finalizacionesUsadas = 468,130
+```
+
+**El detector de encabezado corrido se ganó su lugar en la primera corrida real:**
+avisó que `Cursos_asignados` del PDT gerencial trae la fila de encabezados
+recorrida una columna, en 12 de 12 filas, y lo corrigió al leer. Sin eso, el
+tablero habría publicado el rango de meses como nombre del curso — sin tronar.
+
+Los otros seis avisos son los normales y están explicados en
+[`docs/07-ensayo.md`](docs/07-ensayo.md), paso 4.
+
+### Rendimiento: el punto flojo
+
+| Corrida | Tiempo | Límite |
+|---|---:|---:|
+| `ensayarCorte()` | **19 min** | 30 min |
+| `procesarCorte()` | lo anterior **+ escribir 7 pestañas** | 30 min |
+
+Cabe, pero apenas, y el margen se encoge solo: `acumularHistorico_()` reescribe
+el histórico completo cada mes y el histórico crece 25,427 filas mensuales. Ver
+[`docs/08-plan-colab.md`](docs/08-plan-colab.md) §3.
 
 ## Cómo funciona, en corto
 

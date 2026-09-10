@@ -11,7 +11,11 @@ histórico.
 | | |
 |---|---:|
 | El motor, en Node | **5.9 s** |
-| El mismo cálculo, en Apps Script | **> 15 min y sin terminar** |
+| `ensayarCorte()` en Apps Script | **19 min**, contra un límite de 30 |
+| `procesarCorte()` | lo anterior **+ escribir 7 pestañas** |
+
+Cabe, pero apenas. Y el margen no se queda quieto: los datos crecen, y
+`acumularHistorico_()` se pone más lento cada mes (§3).
 
 El cálculo es el 0.5% del tiempo. El resto se va en **convertir un CSV de 34 MB
 a hoja de Google y leer 3.8 millones de celdas de vuelta**. Sheets no es una base
