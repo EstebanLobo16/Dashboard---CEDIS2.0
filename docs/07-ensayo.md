@@ -20,6 +20,7 @@ Ten a la mano:
 | Una cuenta de Google Workspace de Coppel | Va a ser la **dueña** del tablero. Personal, no compartida |
 | Los archivos del mes | Ver el paso 3 |
 | `docs/instalacion.html` | Los pasos de instalación, con capturas. Ábrelo en el navegador |
+| Una cuenta de Colab | Para el paso 3. Con la misma cuenta de Google basta |
 | Este documento | Los números que cada paso tiene que reproducir |
 
 Los pasos 1 y 2 solo se hacen **una vez**. Del 3 en adelante es el ciclo mensual.
@@ -90,13 +91,49 @@ las dos carpetas. Es lo que le vas a pasar a quien retome esto.
 
 ## Paso 3 · Preparar y subir los archivos
 
-El área entrega **seis** archivos. Tres de ellos no se suben tal cual.
+El área entrega **seis** archivos. Solo tres pasan por el script.
 
-```bash
-python3 pipeline/aligerar_cedis.py <carpeta-con-los-crudos>
+| Archivo | Qué se hace con él |
+|---|---|
+| `CEDIS P1.csv` · `CEDIS P2.csv` · `CEDIS P3.csv` | **Entran al script.** Salen convertidos en otros dos |
+| `PDT-operacion-adaptado.xlsx` | Se sube a Drive **tal cual** |
+| `PDT-gerencial-adaptado.xlsx` | Se sube a Drive **tal cual** |
+| `detalle_colaborador.xlsx` | Se sube **tal cual**, y es opcional |
+
+Los PDT y el Detalle son chicos y no hay nada que recortarles. Los tres CSV sí:
+pesan **200 MB entre los tres**, y dos de ellos rozan los **100 MB**, que es el
+límite de conversión de Drive. Sin aligerarlos, el corte no arranca.
+
+### 3.1 · Correr el aligerado, en Colab
+
+1. Sube los tres `CEDIS P*.csv` a una carpeta de tu Drive, si no están ya.
+   Ponlos **solos en su carpeta**; es más fácil de apuntar.
+2. Abre [colab.research.google.com](https://colab.research.google.com) →
+   **Archivo → Nuevo cuaderno**.
+3. Abre `pipeline/aligerar_cedis.py`, **cópialo entero** y pégalo en una celda.
+4. Arriba del todo, en la celda, llena las dos rutas:
+
+```python
+CARPETA_ENTRADA = '/content/drive/MyDrive/CEDIS/crudos de agosto'
+CARPETA_SALIDA  = '/content/drive/MyDrive/Tablero CEDIS/Datos crudos'
 ```
 
-Tiene que terminar con las seis revisiones en `ok`:
+`CARPETA_SALIDA` apuntando directo a **Datos crudos** te ahorra subir 36 MB a
+mano: los dos archivos quedan donde el tablero los va a buscar. Si prefieres
+revisarlos antes, déjala vacía y salen junto a los originales.
+
+5. **Ejecutar.** Te va a pedir permiso para montar tu Drive: acéptalo.
+
+> **¿Cómo saco la ruta de una carpeta de Drive?** En Colab, el icono de carpeta
+> de la barra izquierda → `drive` → `MyDrive` → navega hasta ella → clic derecho
+> → **Copiar ruta**. Siempre empieza con `/content/drive/MyDrive/`.
+
+Tarda unos minutos. Si algo está mal, el script **no escribe nada** y te dice
+qué pasó: si no encuentra los CSV, te lista lo que sí hay en esa carpeta.
+
+### 3.2 · Las seis revisiones
+
+Tiene que terminar con las seis en `ok`:
 
 ```
   ok   cedis_padron.csv: ninguna columna quedó vacía
@@ -107,10 +144,21 @@ Tiene que terminar con las seis revisiones en `ok`:
   ok   finalizaciones: no se perdió ninguna completada al deduplicar
 ```
 
-**Si alguna dice MAL, el script aborta y no escribe nada.** Está bien que lo
-haga: los archivos que produciría se verían correctos y no lo serían.
+**Si alguna dice `MAL`, el script aborta y no escribe nada.** Está bien que lo
+haga: los archivos que produciría se verían correctos y no lo serían. Las seis
+están puestas ahí porque cada una tapa un error que ya costó horas.
 
-Sube a la carpeta **Datos crudos** de Drive, y nada más:
+Y el resumen de peso, que es el que confirma que valió la pena:
+
+```
+  3 archivos  ->  2
+  517,615 filas  ->  15,252 de padrón + 468,130 de finalizaciones
+  190.5 MB  ->  34.3 MB  (18.0% del original)
+```
+
+### 3.3 · Qué queda en Datos crudos
+
+Cinco archivos, ni uno más:
 
 | Archivo | Peso |
 |---|---:|
@@ -120,12 +168,13 @@ Sube a la carpeta **Datos crudos** de Drive, y nada más:
 | `PDT-gerencial-adaptado.xlsx` | 29 KB |
 | `detalle_colaborador.xlsx` *(opcional)* | 7.9 MB |
 
-> ⚠ **No subas los `CEDIS P1/P2/P3.csv`.** Pesan 200 MB entre los tres y dos de
-> ellos rozan los 100 MB, que es el límite de conversión de Drive. Además el
-> patrón del catálogo no los reconoce: la ingesta busca `cedis?padron*.csv` y
-> `cedis?finalizaciones*.csv`.
+> ⚠ **Los `CEDIS P1/P2/P3.csv` no van ahí.** Ni siquiera "por si acaso": el
+> patrón del catálogo busca `cedis?padron*.csv` y `cedis?finalizaciones*.csv`, y
+> los originales solo estorban y se arriesgan a que alguien los convierta.
 
-Luego corre **`revisarDatosCrudos()`**, que mira nombres y fechas sin abrir nada:
+### 3.4 · Confirmar desde Apps Script
+
+Corre **`revisarDatosCrudos()`**, que mira nombres y fechas sin abrir nada:
 
 ```
 · padron                 ok
@@ -135,6 +184,19 @@ Luego corre **`revisarDatosCrudos()`**, que mira nombres y fechas sin abrir nada
 · detalle_colaborador    ok
 
 Todas las fuentes obligatorias están y parecen del corte.
+```
+
+Si alguna sale **FALTA**, el archivo no está o se llama distinto de lo que
+espera el catálogo `Fuentes`. Si sale **POSIBLEMENTE VIEJA**, está pero es de
+antes del corte: probablemente subiste los del mes pasado.
+
+### Si no quieres usar Colab
+
+El mismo archivo corre en una terminal con Python y `pandas`:
+
+```bash
+pip install pandas
+python3 pipeline/aligerar_cedis.py <carpeta-con-los-crudos> [carpeta-de-salida]
 ```
 
 ---

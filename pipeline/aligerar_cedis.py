@@ -2,11 +2,24 @@
 """
 Aligerar los CSV de CEDIS antes de subirlos a la carpeta de datos crudos.
 
-    python3 pipeline/aligerar_cedis.py <carpeta-con-los-crudos> [carpeta-de-salida]
+Se puede correr de dos formas, y la primera es la normal:
 
-Los tres archivos de agosto pesan 200 MB entre 517,615 filas, y dos de ellos
-rozan los 100 MB — el límite de conversión de Drive. Esta celda no es una
-comodidad: sin ella el corte no arranca.
+  EN COLAB
+      Pega este archivo entero en una celda, escribe la carpeta en
+      CARPETA_ENTRADA (aquí abajo) y dale Ejecutar. Si la carpeta está en
+      Drive, monta Drive él solo.
+
+  EN UNA TERMINAL
+      python3 pipeline/aligerar_cedis.py <carpeta-con-los-crudos> [carpeta-de-salida]
+
+LO ÚNICO QUE ENTRA AQUÍ SON LOS TRES "CEDIS P*.csv".
+
+Los dos PDT y el Detalle Colaborador no pasan por este script: son chicos y se
+suben a Drive tal cual.
+
+Los tres CSV de agosto pesan 200 MB entre 517,615 filas, y dos de ellos rozan
+los 100 MB — el límite de conversión de Drive. Esto no es una comodidad: sin
+ello el corte no arranca.
 
 Deja DOS archivos, que es como el motor los consume:
 
@@ -32,6 +45,21 @@ usa 14. Por eso el orden correcto es columnas primero.
 Lo mejor sería que el área exportara desde el origen solo esas columnas y esto
 dejara de hacer falta.
 """
+
+# =============================================================================
+#  Para correrlo en Colab: escribe aquí la carpeta y dale Ejecutar.
+#  Desde la terminal esto se ignora; manda el argumento.
+# =============================================================================
+
+# La carpeta donde están los tres "CEDIS P*.csv".
+# Si están en tu Drive, la ruta empieza con /content/drive/MyDrive/
+CARPETA_ENTRADA = ''      # ej: '/content/drive/MyDrive/CEDIS/crudos de agosto'
+
+# Dónde dejar los dos archivos aligerados. Vacío = en la misma carpeta.
+# Si ya corriste instalar(), lo más cómodo es apuntarle directo a la carpeta
+# "Datos crudos" que creó dentro de "Tablero CEDIS", y te ahorras subirlos.
+CARPETA_SALIDA = ''       # ej: '/content/drive/MyDrive/Tablero CEDIS/Datos crudos'
+
 import glob
 import os
 import sys
@@ -89,23 +117,80 @@ def clave(valor):
     return ' '.join(texto.split()).upper()
 
 
+def en_colab():
+    try:
+        import google.colab  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+def montar_drive_si_hace_falta(carpeta):
+    """Si la ruta apunta a Drive y Drive no está montado, lo monta."""
+    if not carpeta.startswith('/content/drive') or os.path.isdir('/content/drive/MyDrive'):
+        return
+    if not en_colab():
+        return
+    from google.colab import drive
+    print('Montando Google Drive…')
+    drive.mount('/content/drive')
+
+
+def resolver_carpetas():
+    """La carpeta de entrada y la de salida, vengan de donde vengan."""
+    entrada = sys.argv[1] if len(sys.argv) > 1 else CARPETA_ENTRADA
+    salida = sys.argv[2] if len(sys.argv) > 2 else (CARPETA_SALIDA or entrada)
+
+    if not entrada:
+        raise SystemExit(
+            'No me dijiste dónde están los archivos.\n\n'
+            'En Colab: escribe la ruta en CARPETA_ENTRADA, arriba de esta celda.\n'
+            '          Si están en Drive, se ve así:\n'
+            "          CARPETA_ENTRADA = '/content/drive/MyDrive/CEDIS/crudos'\n\n"
+            'En terminal: python3 pipeline/aligerar_cedis.py <carpeta>'
+        )
+
+    montar_drive_si_hace_falta(entrada)
+    montar_drive_si_hace_falta(salida)
+
+    if not os.path.isdir(entrada):
+        raise SystemExit(
+            f'La carpeta "{entrada}" no existe.\n\n'
+            'En Colab, la ruta de una carpeta de tu Drive empieza con\n'
+            '/content/drive/MyDrive/ — la puedes copiar del panel de archivos\n'
+            '(el icono de carpeta a la izquierda): clic derecho -> Copiar ruta.'
+        )
+    os.makedirs(salida, exist_ok=True)
+    return entrada, salida
+
+
 def rutas_entrada(carpeta):
     rutas = []
-    for patron in ('CEDIS P*.csv', 'CEDIS_P*.csv', 'cedis p*.csv'):
+    for patron in ('CEDIS P*.csv', 'CEDIS_P*.csv', 'cedis p*.csv', 'CEDIS*.csv'):
         rutas += glob.glob(os.path.join(carpeta, patron))
     rutas = sorted(set(r for r in rutas
                        if os.path.basename(r) not in (PADRON, FINALIZACIONES)))
     if not rutas:
-        raise FileNotFoundError(f'No encontré ningún "CEDIS P*.csv" en {carpeta}')
+        # Decir qué SÍ hay: nueve de cada diez veces el archivo está ahí con
+        # otro nombre, y adivinarlo desde un "no encontré nada" es perder media
+        # hora.
+        hay = sorted(os.listdir(carpeta))
+        listado = '\n'.join(f'    {n}' for n in hay[:25]) or '    (la carpeta está vacía)'
+        raise SystemExit(
+            f'No encontré ningún "CEDIS P*.csv" en:\n    {carpeta}\n\n'
+            f'Lo que sí hay ahí:\n{listado}'
+            f'{f"{chr(10)}    … y {len(hay) - 25} más" if len(hay) > 25 else ""}\n\n'
+            'Aquí solo entran los CSV de finalizaciones (CEDIS P1, P2, P3).\n'
+            'Los dos PDT y el Detalle Colaborador NO pasan por este script:\n'
+            'se suben a Drive tal cual.\n\n'
+            'Si tus CSV se llaman de otra forma, renómbralos a "CEDIS P1.csv",\n'
+            '"CEDIS P2.csv", etc. — o dime cómo se llaman y ajustamos el patrón.'
+        )
     return rutas
 
 
 def main():
-    if len(sys.argv) < 2:
-        sys.exit(__doc__)
-    entrada = sys.argv[1]
-    salida = sys.argv[2] if len(sys.argv) > 2 else entrada
-
+    entrada, salida = resolver_carpetas()
     rutas = rutas_entrada(entrada)
     columnas = sorted(set(COLUMNAS_PADRON) | set(COLUMNAS_FINALIZACIONES))
     peso_antes = sum(os.path.getsize(r) for r in rutas)
@@ -176,9 +261,21 @@ def main():
     revisar(datos, padron, finalizaciones)
 
     print(f"""
-Sube estos dos a la carpeta de datos crudos de Drive y NO subas los
-"CEDIS P*.csv" originales: pesan 200 MB y dos de ellos rozan el límite de
-conversión de 100 MB.
+LO QUE SIGUE
+
+  1. Sube a la carpeta "Datos crudos" de tu Drive (dentro de "Tablero CEDIS"):
+
+         cedis_padron.csv            <- éste
+         cedis_finalizaciones.csv    <- y éste
+         PDT-operacion-adaptado.xlsx      tal cual, no pasa por aquí
+         PDT-gerencial-adaptado.xlsx      tal cual
+         detalle_colaborador.xlsx         tal cual, y es opcional
+
+  2. NO subas los "CEDIS P*.csv" originales: pesan 200 MB y dos de ellos rozan
+     el límite de conversión de Drive, que son 100 MB.
+
+  3. Corre revisarDatosCrudos() desde el editor de Apps Script. Las cinco
+     fuentes tienen que salir en "ok".
 
 Lo que esto NO borra, a propósito:
 
