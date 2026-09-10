@@ -188,7 +188,23 @@ def resolver_carpetas():
             '/content/drive/MyDrive/ — la puedes copiar del panel de archivos\n'
             '(el icono de carpeta a la izquierda): clic derecho -> Copiar ruta.'
         )
-    os.makedirs(salida, exist_ok=True)
+    # Una carpeta de salida que no existe en Drive es casi siempre un error de
+    # dedo, no una carpeta por crear. Y crearla en silencio es peor que fallar:
+    # "Tablero Cedis" y "Tablero CEDIS" son DOS carpetas distintas para Drive, y
+    # el tablero solo mira la que creó instalar(). Los archivos acabarían en una
+    # carpeta que nadie lee, con todo saliendo en "ok".
+    if not os.path.isdir(salida):
+        if salida.startswith('/content/drive'):
+            raise SystemExit(
+                f'La carpeta de salida no existe:\n    {salida}\n\n'
+                'Ojo con las mayúsculas: para Drive, "Tablero CEDIS" y "Tablero\n'
+                'Cedis" son dos carpetas distintas, y el tablero solo mira la que\n'
+                'creó instalar().\n\n'
+                'Abre la URL de "Datos crudos" que instalar() imprimió, o córrelo\n'
+                'de nuevo, y copia la ruta de ESA carpeta desde el panel de\n'
+                'archivos de Colab.'
+            )
+        os.makedirs(salida, exist_ok=True)
     return entrada, salida
 
 

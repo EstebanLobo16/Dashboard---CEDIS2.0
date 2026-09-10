@@ -122,6 +122,16 @@ CARPETA_SALIDA  = '/content/drive/MyDrive/Tablero CEDIS/Datos crudos'
 mano: los dos archivos quedan donde el tablero los va a buscar. Si prefieres
 revisarlos antes, déjala vacía y salen junto a los originales.
 
+> ⚠ **Copia esa ruta, no la escribas.** Para Drive, `Tablero CEDIS` y `Tablero
+> Cedis` son **dos carpetas distintas**, y el tablero solo mira la que creó
+> `instalar()` — la busca por su ID, no por su nombre. Una mayúscula de más y
+> los archivos acaban en una carpeta que nadie lee, con todo saliendo en `ok`.
+>
+> Lo seguro: abre la URL de *Datos crudos* que `instalar()` imprimió en el paso
+> 2, y saca la ruta desde el panel de archivos de Colab con clic derecho →
+> **Copiar ruta**. El script se niega a crear una carpeta que no exista dentro de
+> Drive, justamente por esto.
+
 5. **Ejecutar.** Te va a pedir permiso para montar tu Drive: acéptalo.
 
 > ⚠ **Pega el archivo tal cual, sin dejar que Colab te "ayude".** Si el editor
