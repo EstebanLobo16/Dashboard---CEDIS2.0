@@ -125,6 +125,29 @@ def en_colab():
         return False
 
 
+def en_cuaderno():
+    """¿Esto corre dentro de un cuaderno (Colab, Jupyter) y no como script?"""
+    try:
+        from IPython import get_ipython
+        consola = get_ipython()
+        return consola is not None and consola.__class__.__name__ != 'TerminalInteractiveShell'
+    except Exception:
+        return False
+
+
+def argumentos():
+    """Los argumentos de la línea de comandos, o ninguno si esto es un cuaderno.
+
+    En Colab `sys.argv` NO viene vacío: trae los del lanzador del kernel, algo
+    como ['colab_kernel_launcher.py', '-f', '/root/.../kernel-xxxx.json']. Tomar
+    esos por rutas hace que el script se queje de que la carpeta "-f" no existe,
+    que es de las cosas más desconcertantes que puede decir un programa.
+    """
+    if en_cuaderno():
+        return []
+    return [a for a in sys.argv[1:] if not a.startswith('-')]
+
+
 def montar_drive_si_hace_falta(carpeta):
     """Si la ruta apunta a Drive y Drive no está montado, lo monta."""
     if not carpeta.startswith('/content/drive') or os.path.isdir('/content/drive/MyDrive'):
@@ -137,9 +160,14 @@ def montar_drive_si_hace_falta(carpeta):
 
 
 def resolver_carpetas():
-    """La carpeta de entrada y la de salida, vengan de donde vengan."""
-    entrada = sys.argv[1] if len(sys.argv) > 1 else CARPETA_ENTRADA
-    salida = sys.argv[2] if len(sys.argv) > 2 else (CARPETA_SALIDA or entrada)
+    """La carpeta de entrada y la de salida, vengan de donde vengan.
+
+    Manda lo que esté escrito arriba en CARPETA_ENTRADA: si alguien se tomó la
+    molestia de llenarlo, es lo que quiere. Los argumentos son para la terminal.
+    """
+    args = argumentos()
+    entrada = CARPETA_ENTRADA or (args[0] if len(args) > 0 else '')
+    salida = CARPETA_SALIDA or (args[1] if len(args) > 1 else '') or entrada
 
     if not entrada:
         raise SystemExit(

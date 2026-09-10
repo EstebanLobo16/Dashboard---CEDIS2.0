@@ -211,6 +211,9 @@ pip install pandas
 python3 pipeline/aligerar_cedis.py <carpeta-con-los-crudos> [carpeta-de-salida]
 ```
 
+Manda lo que esté escrito en `CARPETA_ENTRADA`: si lo llenaste, los argumentos
+sobran. Déjalo vacío para usar la terminal.
+
 ---
 
 ## Paso 4 · `ensayarCorte('2026-08')`
