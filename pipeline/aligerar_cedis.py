@@ -159,6 +159,52 @@ def montar_drive_si_hace_falta(carpeta):
     drive.mount('/content/drive')
 
 
+def ruta_real(ruta):
+    """La ruta como Drive la tiene escrita. Corrige mayúsculas, nada más.
+
+    El montaje de Drive en Colab es un sistema de archivos, y distingue
+    mayúsculas: si tu carpeta se llama "Tablero Cedis" y aquí dice "Tablero
+    CEDIS", os.path.isdir() contesta que no existe.
+
+    Drive por dentro no distingue. getFoldersByName() de Apps Script encuentra
+    "Tablero Cedis" buscando "Tablero CEDIS", así que instalar() reusa la que ya
+    tenías en vez de crear una segunda — que es lo correcto— y el cuaderno se
+    queda apuntando a un nombre que en disco no está. Peor: un os.makedirs()
+    sobre esa ruta crearía la carpeta que falta, y acabarías con dos árboles,
+    uno con los datos y otro con lo que el tablero mira.
+
+    Camina la ruta segmento por segmento. Si existe tal cual, lo deja. Si no,
+    busca uno que solo difiera en mayúsculas: si hay exactamente uno, lo usa. Si
+    hay dos, truena — ahí adivinar es peor que preguntar. Y un segmento que de
+    plano no existe lo deja como venía: crearlo o quejarse es de quien llamó.
+    """
+    if not ruta.startswith('/content/drive'):
+        return ruta
+    actual = ''
+    for parte in ruta.strip('/').split('/'):
+        candidata = f'{actual}/{parte}'
+        if os.path.isdir(candidata):
+            actual = candidata
+            continue
+        try:
+            hay = os.listdir(actual or '/')
+        except OSError:
+            return ruta
+        iguales = sorted(n for n in hay
+                         if n.lower() == parte.lower()
+                         and os.path.isdir(f'{actual}/{n}'))
+        if len(iguales) > 1:
+            raise SystemExit(
+                f'Hay {len(iguales)} carpetas que solo difieren en mayúsculas '
+                f'dentro de:\n    {actual}\n\n'
+                + '\n'.join('    ' + n for n in iguales)
+                + f'\n\nBuscaba "{parte}" y no sé cuál es. Deja una sola: mueve lo '
+                'que\nhaya en la otra y bórrala, o escribe el nombre exacto.'
+            )
+        actual = f'{actual}/{iguales[0]}' if iguales else candidata
+    return actual
+
+
 def resolver_carpetas():
     """La carpeta de entrada y la de salida, vengan de donde vengan.
 
@@ -180,6 +226,8 @@ def resolver_carpetas():
 
     montar_drive_si_hace_falta(entrada)
     montar_drive_si_hace_falta(salida)
+    entrada = ruta_real(entrada)
+    salida = ruta_real(salida)
 
     if not os.path.isdir(entrada):
         raise SystemExit(

@@ -257,6 +257,34 @@ cuáles de septiembre.
 
 ---
 
+## Si tu carpeta se llama "Tablero Cedis" y no "Tablero CEDIS"
+
+No borres nada, y no tienes dos carpetas: tienes una.
+
+`instalar()` no crea la carpeta a ciegas — primero la busca por nombre, y la
+búsqueda de Drive **no distingue mayúsculas**. Encontró la que ya tenías, la
+reusó, y guardó su ID en `CED_ID_CARPETA_BASE`. De ahí en adelante el tablero
+trabaja con el **ID**, no con el nombre: le da igual cómo se llame.
+
+El problema es del otro lado. El montaje de Drive en Colab **sí** distingue
+mayúsculas, y ahí `/Tablero CEDIS/` y `/Tablero Cedis/` son rutas distintas.
+
+Para saber cuál es la tuya, corre `estado()` en el editor de Apps Script: te
+imprime el ID de la carpeta base. Ábrela en
+`drive.google.com/drive/folders/<ese-id>` — esa, la que el tablero mira de
+verdad.
+
+El cuaderno ya lo resuelve solo: la celda 4 corre `ruta_real()`, que corrige las
+mayúsculas de la ruta y te dice si tuvo que hacerlo. Si prefieres, escribe el
+nombre exacto en `CARPETA_CRUDOS` y no hace nada.
+
+Lo que **no** debes hacer es crear una segunda carpeta con la otra grafía.
+Acabarías con los datos en una y el tablero mirando la otra, y todo saliendo en
+"ok". Por eso ni el cuaderno ni el aligerado crean carpetas dentro de Drive: si
+la ruta no existe, truenan y te lo dicen.
+
+---
+
 ## Qué pasa con lo de antes
 
 **Nada se borra.** El camino viejo sigue ahí, demotado a alterno:
