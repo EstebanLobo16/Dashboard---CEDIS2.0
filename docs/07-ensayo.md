@@ -91,6 +91,12 @@ las dos carpetas. Es lo que le vas a pasar a quien retome esto.
 
 ## Paso 3 · Preparar y subir los archivos
 
+> **Si ya migraste al cuaderno de Colab** (`docs/09-migrar-a-colab.md`), este
+> paso ya no lo haces a mano: sube los seis archivos a *Datos crudos* **tal
+> cual**, sin aligerar, y el cuaderno hace el aligerado él solo en su celda 4.
+> Lo que sigue aquí es el camino alterno — el que usas si Colab no está
+> disponible y vas a correr `procesarCorte()` dentro de Apps Script.
+
 El área entrega **seis** archivos. Solo tres pasan por el script.
 
 | Archivo | Qué se hace con él |

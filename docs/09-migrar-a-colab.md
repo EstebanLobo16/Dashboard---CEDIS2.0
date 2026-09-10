@@ -212,6 +212,51 @@ es la parte que tarda seis segundos.
 
 ---
 
+## ¿Y `aligerar_cedis.py`? ¿Lo corro aparte?
+
+**No.** El cuaderno lo corre por ti. La celda 4 hace esto:
+
+```python
+sys.path.insert(0, '/content/repo/pipeline')
+import aligerar_cedis
+aligerar_cedis.CARPETA_ENTRADA = CARPETA_CRUDOS      # Datos crudos, en tu Drive
+aligerar_cedis.CARPETA_SALIDA  = '/content/trabajo'  # disco local de Colab
+aligerar_cedis.main(instrucciones=False)
+```
+
+O sea: es el mismo archivo de siempre, pero importado en vez de pegado en una
+celda. No hay una segunda copia que mantener.
+
+De ahí se desprenden las tres respuestas:
+
+| Pregunta | Respuesta |
+|---|---|
+| ¿Tengo que aligerar antes de subir? | **No.** Sube los tres `CEDIS P*.csv` como los entrega el área |
+| ¿Dejo los tres originales en *Datos crudos*? | **Sí**, y ahí se quedan. El cuaderno los lee, no los toca |
+| ¿Sigue sirviendo suelto? | **Sí.** Es el camino alterno: `python3 pipeline/aligerar_cedis.py <carpeta>`, o pegado en una celda, para cuando vayas a correr `procesarCorte()` dentro de Apps Script |
+
+Por qué el aligerado se quedó donde está: el cuaderno lo hace sobre el **disco
+local de Colab**, no sobre Drive. Leer 200 MB desde Drive montado y escribir 36
+de vuelta es lo que tardaría; leer una vez y trabajar en local, no.
+
+Con `DEJAR_ALIGERADOS_EN_DRIVE = True` (así viene), al terminar copia
+`cedis_padron.csv` y `cedis_finalizaciones.csv` de vuelta a *Datos crudos*. No
+los necesita el cuaderno: son para dejar rastro y para que el camino alterno
+—`procesarCorte()` dentro de Apps Script— encuentre lo que espera sin que
+tengas que aligerar de nuevo.
+
+**Volver a correrlo es seguro.** El script busca `CEDIS P*.csv` y excluye por
+nombre exacto `cedis_padron.csv` y `cedis_finalizaciones.csv`, así que sus
+propias salidas nunca vuelven a entrar como entradas, corras el cuaderno una
+vez o cinco.
+
+Lo único que sí tienes que hacer cada mes: **borrar los CSV del mes pasado**
+antes de subir los nuevos. El script se traga *todos* los `CEDIS P*.csv` que
+encuentre en la carpeta, y no tiene forma de saber cuáles son de agosto y
+cuáles de septiembre.
+
+---
+
 ## Qué pasa con lo de antes
 
 **Nada se borra.** El camino viejo sigue ahí, demotado a alterno:
