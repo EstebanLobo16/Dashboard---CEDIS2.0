@@ -22,7 +22,7 @@ const revisar = (bien, que) => {
 /* ---- 1. CONFIG y el esquema ------------------------------------------- */
 const contexto = { console, Object, Array, Number, String, Math, JSON, Date, RegExp, Error, isNaN };
 vm.createContext(contexto);
-['00_Config.gs', '01_Esquema.gs', '10_Util.gs'].forEach((f) => {
+['00_Config.gs', '01_Esquema.gs', '02_Semillas.gs', '10_Util.gs'].forEach((f) => {
   vm.runInContext(fs.readFileSync(path.join(SRC, f), 'utf8'), contexto, { filename: f });
 });
 // Apps Script comparte los `const` de nivel superior entre archivos, pero en un
@@ -48,6 +48,31 @@ revisar(ESQUEMA_CORTE.Centro.indexOf('tipo_centro') !== -1, "Centro tiene 'tipo_
 revisar(ESQUEMA_CORTE.Centro.indexOf('tipo_cobranza') === -1, "Centro ya no tiene 'tipo_cobranza'");
 revisar(columna_(ESQUEMA_CORTE, 'Centro', 'tipo_centro') === 6,
   "'tipo_centro' sigue en la posición 6 (el orden es parte del contrato)");
+
+/* ---- 1b. Las semillas encajan con el esquema --------------------------- */
+// Un renglón con más o menos celdas que columnas revienta instalar() en
+// producción, con la hoja a medio crear. Aquí cuesta un segundo verlo.
+vm.runInContext('globalThis.expuesto2 = {SEMILLAS, ESQUEMA_CATALOGOS};',
+  contexto, { filename: 'puente2' });
+const { SEMILLAS, ESQUEMA_CATALOGOS } = contexto.expuesto2;
+
+console.log('\nSemillas contra el esquema');
+Object.keys(SEMILLAS).forEach((nombre) => {
+  const columnas = ESQUEMA_CATALOGOS[nombre];
+  revisar(Boolean(columnas), `la pestaña '${nombre}' existe en el esquema`);
+  if (!columnas) return;
+  const malas = SEMILLAS[nombre]
+    .map((fila, i) => (fila.length === columnas.length ? null : `${i + 1} (${fila.length})`))
+    .filter(Boolean);
+  revisar(!malas.length,
+    `${nombre}: ${SEMILLAS[nombre].length} renglón(es) de ${columnas.length} columnas` +
+    (malas.length ? ` — mal: ${malas.slice(0, 5).join(', ')}` : ''));
+});
+// Al revés: una pestaña del esquema sin semilla nace vacía, y eso es legítimo
+// (Administradores) pero conviene que sea a propósito.
+const sinSemilla = Object.keys(ESQUEMA_CATALOGOS).filter((n) => !SEMILLAS[n]);
+revisar(!sinSemilla.length,
+  `todas las pestañas del catálogo tienen semilla${sinSemilla.length ? ' — falta ' + sinSemilla.join(', ') : ''}`);
 
 /* ---- 2. Nadie lleva el área escrita duro ------------------------------- */
 // Se revisa solo el código, no los comentarios: un comentario que dice de dónde

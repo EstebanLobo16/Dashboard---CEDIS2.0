@@ -776,16 +776,38 @@ meses después.
 
 Ahora gana el primer plan que lo declare, y el padrón deja de opinar.
 
-### Etapa 7 · El ensayo · 2 días
+### Etapa 7 · El ensayo · 2 días · **la guía está escrita, la corrida es tuya**
+
+Es la única etapa que necesita una cuenta de Google, así que no se puede correr
+desde aquí. Lo que sí se puede es dejarla preparada al detalle:
+**[`docs/07-ensayo.md`](07-ensayo.md)** lleva los nueve pasos con los números que
+cada uno tiene que reproducir, los cinco avisos que son normales, y la tabla de
+qué hacer cuando algo se atora.
+
+Dos cosas se arreglaron al escribirla, y las dos habrían aparecido a media
+instalación:
+
+- **Faltaba el permiso `script.send_mail`** en `appsscript.json`. `MailApp` lo
+  exige, y sin él `avisarPorCorreo_()` truena — el día que hace falta, que es
+  justo el día que algo salió mal. De paso se quitó `script.external_request`,
+  que sobraba: no hay un solo `UrlFetchApp` en el código.
+- **`probar_identidad.js` ahora compara las semillas contra el esquema.** Un
+  renglón con más o menos celdas que columnas revienta `instalar()` con la hoja a
+  medio crear. Son 18 + 26 + 3 + 2 + 1 + 3 + 57 + 34 + 4 + 5 renglones: revisarlos
+  a ojo no es un plan.
+
+#### Los pasos originales
 
 El equivalente del ensayo de agosto de Cobranza, que es lo que dio confianza para
 publicar.
 
-- [ ] `revisarFuentes()` reconoce los cuatro archivos
+- [ ] `instalar()` siembra los diez catálogos con sus cuentas
+- [ ] `revisarFuentes()` reconoce los cinco archivos
 - [ ] `ensayarCorte('2026-08')` completa y cuadra
 - [ ] Los conteos de diagnóstico se revisan uno por uno contra §2 de este documento:
       **padrón 15,252 → 14,806 publicados**, 128 por categoría, 85 sin puesto en
-      el PDT, 233 con fecha posterior, `cursosDelPlanSinFuente = 0`
+      el PDT, 233 con fecha posterior, `cursosDelPlanSinFuente = 0`. La lista
+      completa está en `docs/07-ensayo.md`, paso 4
 - [ ] La especialización le llega a las **5,181 personas** que la tienen en P3
 - [ ] `procesarCorte()` en frío, **cronometrado** contra el límite de 1,800 s
 - [ ] Los números del ensayo se anotan en el README como referencia

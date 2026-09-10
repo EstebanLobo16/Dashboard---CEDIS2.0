@@ -3,7 +3,8 @@
 Réplica del tablero de Cobranza sobre datos de CEDIS, íntegramente en Google
 Apps Script. Universidad Corporativa · Coppel.
 
-> **En construcción · etapas 1 a 6 de 7 terminadas.** El código heredado de Cobranza
+> **En construcción · etapas 1 a 6 de 7 terminadas.** La séptima es instalarlo
+> en Apps Script: **[`docs/07-ensayo.md`](docs/07-ensayo.md)**. El código heredado de Cobranza
 > está completo y probado en producción; lo que falta es adaptarlo a las fuentes
 > y las reglas de CEDIS. El plan, con los datos ya medidos, está en
 > **[`docs/06-plan-cedis.md`](docs/06-plan-cedis.md)**.
@@ -19,6 +20,7 @@ Apps Script. Universidad Corporativa · Coppel.
 
 | Si eres… | Lee |
 |---|---|
+| Quien va a **instalarlo y publicarlo** | **[`docs/07-ensayo.md`](docs/07-ensayo.md)** — los nueve pasos, con los números que cada uno debe dar |
 | Quien va a **construir** este tablero | **[`docs/06-plan-cedis.md`](docs/06-plan-cedis.md)** — el plan, con los datos de CEDIS ya medidos |
 | Quien **retoma este proyecto** sin contexto | El plan de arriba, y luego [lo que se hereda de Cobranza](#lo-que-se-hereda-de-cobranza) |
 | Quien **usa** el tablero o necesita configurarlo | **[`docs/manual.html`](docs/manual.html)** — el manual completo, ábrelo en el navegador |
@@ -50,6 +52,7 @@ Apps Script. Universidad Corporativa · Coppel.
 | [`instalacion.html`](docs/instalacion.html) | Los pasos para instalar y desplegar |
 | [`replicar-en-otra-area.md`](docs/replicar-en-otra-area.md) | Cómo levantar el mismo tablero para CEDIS o CATd |
 | [`06-plan-cedis.md`](docs/06-plan-cedis.md) | **El plan de trabajo del tablero de CEDIS**: los datos medidos, las siete diferencias con Cobranza y las etapas |
+| [`07-ensayo.md`](docs/07-ensayo.md) | **La guía paso a paso para instalarlo y publicar el primer corte**, con los números que cada paso debe reproducir |
 
 ## Cómo funciona, en corto
 
