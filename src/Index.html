@@ -28,7 +28,7 @@
         <div class="frame-bar">
           <div><span class="mini-document" aria-hidden="true"></span><span><select id="reportFilter" class="report-filter" aria-label="Seleccionar reporte"></select><small id="framePeriod">Avance</small></span></div>
           <div>
-            <button id="processButton" class="process-button is-hidden" type="button">Procesar corte</button>
+            <button id="processButton" class="process-button is-hidden" type="button">Publicar corte</button>
             <button id="updateDataButton" class="update-data-button" type="button">Actualizar datos</button>
           </div>
         </div>
@@ -47,7 +47,7 @@
             <small>REPORTE LISTO PARA CONFIGURAR</small>
             <h3 id="emptyReportName">CEDIS</h3>
             <p>Todavía no hay información publicada. Procesa el primer corte desde los archivos de Drive, o carga un paquete generado desde el cuaderno.</p>
-            <button id="emptyProcessButton" class="primary-button empty-upload-button is-hidden" type="button">Procesar corte</button>
+            <button id="emptyProcessButton" class="primary-button empty-upload-button is-hidden" type="button">Publicar corte</button>
             <button id="emptyUpdateDataButton" class="secondary-button empty-upload-button" type="button">Cargar paquete</button>
             <p id="emptyNoAccess" class="empty-no-access is-hidden">Solicita a un administrador que publique el primer corte.</p>
           </section>
@@ -140,17 +140,17 @@
       <div class="import-backdrop" data-close-process></div>
       <section class="import-card">
         <header>
-          <div><small>CEDIS</small><h2 id="processTitle">Procesar corte</h2></div>
+          <div><small>CEDIS</small><h2 id="processTitle">Publicar corte</h2></div>
           <button id="closeProcessButton" type="button" aria-label="Cerrar">×</button>
         </header>
         <div class="import-preview">
-          <p class="run-note" id="processIntro">Se leerán los archivos de la carpeta <b>Datos crudos</b> y se publicará el corte. Convertir y leer los archivos tarda varios minutos: no cierres esta ventana.</p>
+          <p class="run-note" id="processIntro">Se publicará el paquete que el cuaderno de Colab dejó en la carpeta <b>Paquetes</b>. Se reemplaza el corte vigente y se acumula el histórico; republicar el mismo periodo es seguro.</p>
           <div class="import-progress is-hidden" id="processProgress"><span id="processProgressText">Leyendo los archivos…</span><i><b id="processProgressBar"></b></i></div>
           <div id="processLog" class="run-log is-hidden"></div>
         </div>
         <footer>
           <button id="cancelProcessButton" class="secondary-button" type="button">Cancelar</button>
-          <button id="runProcessButton" class="primary-button" type="button">Procesar y publicar</button>
+          <button id="runProcessButton" class="primary-button" type="button">Publicar</button>
         </footer>
       </section>
     </div>

@@ -278,20 +278,31 @@ function estadoDelCorte() {
  * Un corte que se publica en silencio no se revisa, y el mes que salga mal nadie
  * se va a enterar hasta que alguien mire el tablero.
  */
+/**
+ * El corte del día 12.
+ *
+ * Publica el paquete que el cuaderno de Colab dejó en Drive, en vez de calcular
+ * aquí: el cálculo tarda 6 segundos allá y 19 minutos aquí, contra un límite de
+ * 30. Ver docs/08-plan-colab.md.
+ *
+ * Si el paquete no está, avisa y no rompe nada: el tablero sigue mostrando el
+ * corte anterior.
+ */
 function corteMensual_() {
   const periodo = periodoActivo_();
   try {
-    const resultado = procesarCorte({ periodo });
+    const resultado = publicarDesdeDrive(periodo);
     avisarPorCorreo_(
       `Corte ${periodo} publicado` +
         (resultado.avisos.length ? ` con ${resultado.avisos.length} aviso(s)` : ''),
       resumenParaCorreo_(periodo, resultado)
     );
   } catch (error) {
-    avisarPorCorreo_(`El corte ${periodo} NO se pudo procesar`,
+    avisarPorCorreo_(`El corte ${periodo} NO se pudo publicar`,
       `${error.message || error}\n\n` +
-      `El tablero sigue mostrando el corte anterior. Corre diagnostico() desde el editor de ` +
-      `Apps Script para ver qué falta, y procesarCorte() cuando esté resuelto.`);
+      `El tablero sigue mostrando el corte anterior. Casi siempre es que falta correr el ` +
+      `cuaderno pipeline/colab/corte_cedis.ipynb en Colab, que es quien deja el paquete en ` +
+      `Drive. Corre diagnostico() desde el editor para ver el estado completo.`);
     throw error;
   }
 }

@@ -402,7 +402,18 @@ function importarPaquete(contenido) {
   return publicarPaquete(contenido);
 }
 
-/** Corre el motor sobre los archivos de Drive. La reja está en procesarCorte(). */
+/**
+ * Publica el paquete que dejó el cuaderno. La reja está en publicarPaquete().
+ *
+ * Es lo que hace el botón del tablero desde que el cálculo salió de Apps Script.
+ * Solo escribe, así que tarda minutos y no decenas — el botón ya no cuelga de
+ * una llamada de veinte minutos.
+ */
+function publicarDesdeTablero(opciones) {
+  return publicarDesdeDrive((opciones || {}).periodo || '');
+}
+
+/** El camino alterno: calcular aquí. Lento; ver docs/08-plan-colab.md. */
 function procesarCorteDesdeTablero(opciones) {
   return procesarCorte(opciones || {});
 }

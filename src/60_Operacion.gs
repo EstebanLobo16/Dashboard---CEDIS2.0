@@ -66,6 +66,24 @@ function revisarFuentes(periodo) {
   return { periodo: cual, revisiones, problemas: revisiones.filter((r) => problematica_(r)) };
 }
 
+/**
+ * ¿Está el paquete del periodo? Es lo que de verdad decide si el corte del día
+ * 12 va a poder publicar; los archivos crudos ya solo le sirven al cuaderno.
+ */
+function revisarPaquete(periodo) {
+  const cual = String(periodo || '').trim() || periodoActivo_();
+  try {
+    const archivo = paqueteDelPeriodo_(cual);
+    return {
+      periodo: cual, existe: true, nombre: archivo.getName(),
+      detalle: `${archivo.getName()} · ${aTextoFecha_(archivo.getLastUpdated())} · ` +
+        `${Math.round(archivo.getSize() / 1048576 * 10) / 10} MB`,
+    };
+  } catch (error) {
+    return { periodo: cual, existe: false, detalle: String(error.message || error) };
+  }
+}
+
 function problematica_(revision) {
   return revision.estado === 'FALTA' ||
     (revision.obligatoria && revision.estado === 'POSIBLEMENTE VIEJA');
@@ -109,19 +127,29 @@ function revisionPreviaMensual_() {
     return;
   }
 
+  const paquete = revisarPaquete(periodo);
+
   bitacora_('revisionPrevia', periodo, 'vigilancia', resultado.problemas.length,
-    resultado.problemas.length
+    `paquete: ${paquete.existe ? 'listo' : 'FALTA'} · ` +
+    (resultado.problemas.length
       ? resultado.problemas.map((r) => `${r.clave}: ${r.estado}`).join(' · ')
-      : 'todo en orden');
+      : 'crudos en orden'));
 
-  if (!resultado.problemas.length) return;
+  if (paquete.existe && !resultado.problemas.length) return;
 
-  avisarPorCorreo_(
-    `Faltan datos para el corte ${periodo}`,
-    `El corte se procesa el día 12 y estas fuentes todavía no están listas:\n\n` +
-    resultado.problemas.map((r) => `  · ${r.clave}: ${r.estado}\n    ${r.detalle}`).join('\n') +
-    `\n\nSúbelas a la carpeta de datos crudos antes de mañana, o el corte va a fallar.`
-  );
+  const partes = [`El corte se publica el día 12 y esto todavía no está listo:`, ''];
+  if (!paquete.existe) {
+    partes.push(
+      `  · EL PAQUETE. Es lo único que hace falta para publicar.`,
+      `    ${paquete.detalle}`,
+      `    Corre el cuaderno pipeline/colab/corte_cedis.ipynb en Colab.`, '');
+  }
+  if (resultado.problemas.length) {
+    partes.push(`  Y en los datos crudos, que son los que lee el cuaderno:`);
+    resultado.problemas.forEach((r) => partes.push(`  · ${r.clave}: ${r.estado}\n    ${r.detalle}`));
+  }
+
+  avisarPorCorreo_(`Falta algo para el corte ${periodo}`, partes.join('\n'));
 }
 
 
@@ -239,6 +267,8 @@ function alAbrirCatalogos_() {
     .createMenu(CONFIG.nombreReporte)
     .addItem('Aplicar cambios de los catálogos', 'menuRefrescar_')
     .addSeparator()
+    .addItem('Publicar el corte del mes', 'menuPublicar_')
+    .addSeparator()
     .addItem('Revisar los datos crudos', 'menuRevisarFuentes_')
     .addItem('Ensayar el corte (sin publicar)', 'menuEnsayar_')
     .addSeparator()
@@ -250,6 +280,32 @@ function alAbrirCatalogos_() {
 function menuRefrescar_() {
   refrescarCatalogos();
   avisoDeMenu_('Listo', 'Los cambios de los catálogos ya se están usando.');
+}
+
+/**
+ * Publica el paquete que dejó el cuaderno. Es lo que se usa mes con mes; tarda
+ * minutos, no decenas, porque solo escribe.
+ */
+function menuPublicar_() {
+  const ui = SpreadsheetApp.getUi();
+  const periodo = periodoActivo_();
+  const paquete = revisarPaquete(periodo);
+
+  if (!paquete.existe) {
+    avisoDeMenu_(`No hay paquete de ${periodo}`, paquete.detalle);
+    return;
+  }
+  const respuesta = ui.alert(`Publicar el corte ${periodo}`,
+    `Voy a publicar:\n\n  ${paquete.detalle}\n\n` +
+    `Se reemplaza el corte vigente y se acumula el histórico. Republicar el mismo ` +
+    `periodo es seguro. ¿Seguimos?`, ui.ButtonSet.YES_NO);
+  if (respuesta !== ui.Button.YES) return;
+
+  const resultado = publicarDesdeDrive(periodo);
+  avisoDeMenu_('Publicado',
+    `Corte ${resultado.periodo} publicado desde ${resultado.archivo}.\n\n` +
+    `${resultado.filas.Colaborador} colaboradores` +
+    (resultado.archivado ? `\nSe archivó ${resultado.archivado}` : ''));
 }
 
 function menuRevisarFuentes_() {

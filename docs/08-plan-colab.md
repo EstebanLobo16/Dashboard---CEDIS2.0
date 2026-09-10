@@ -223,7 +223,26 @@ enfermedad que el proyecto vino a curar.
 - **Verificación:** `node pipeline/validar_paquete.js <paquete>` pasa, y el
   paquete de Colab sale **idéntico** al que produce el motor aquí.
 
-### B · Publicar desde Drive · 1 día
+### B · Publicar desde Drive · 1 día · **HECHA**
+
+`publicarDesdeDrive(periodo)` busca `cedis-<periodo>.json` en la carpeta nueva
+`Paquetes`, lo lee y se lo pasa a `publicarPaquete()` — que ya hacía la
+validación, el archivado y el histórico. Conectado al botón del tablero, al menú
+de Catálogos y al disparador del día 12; la revisión del día 11 ahora vigila
+**el paquete**, que es lo que de verdad decide si el corte va a poder publicar.
+
+Se busca por **nombre exacto**, no "el más reciente": publicar el mes equivocado
+porque alguien dejó un archivo viejo es peor que no publicar. Entre dos con el
+mismo nombre gana el más nuevo, que es lo que pasa al volver a correr el
+cuaderno.
+
+**Verificación:** `node pipeline/probar_publicacion.js` — 7 revisiones contra un
+Drive simulado, incluidas las dos que pueden equivocarse en silencio (no agarrar
+otro mes por ser más reciente, y quedarse con el más nuevo entre homónimos).
+
+El paso a paso para migrar está en [`09-migrar-a-colab.md`](09-migrar-a-colab.md).
+
+#### Los pasos originales
 
 - Carpeta `Paquetes` en `00_Config.gs` y `03_Almacen.gs`.
 - `publicarDesdeDrive(periodo)`: busca el paquete del periodo, lo lee y llama a

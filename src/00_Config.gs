@@ -30,6 +30,7 @@ const CONFIG = Object.freeze({
   carpetas: Object.freeze({
     base: 'Tablero CEDIS',
     crudos: 'Datos crudos',
+    paquetes: 'Paquetes',
     archivo: 'Cortes archivados',
   }),
 
@@ -44,6 +45,7 @@ const CONFIG = Object.freeze({
     historico: 'CED_ID_HISTORICO',
     carpetaBase: 'CED_ID_CARPETA_BASE',
     carpetaCrudos: 'CED_ID_CARPETA_CRUDOS',
+    carpetaPaquetes: 'CED_ID_CARPETA_PAQUETES',
     carpetaArchivo: 'CED_ID_CARPETA_ARCHIVO',
     ultimoPeriodo: 'CED_ULTIMO_PERIODO',
     ultimaPublicacion: 'CED_ULTIMA_PUBLICACION',

@@ -13,7 +13,8 @@ Apps Script. Universidad Corporativa · Coppel.
 > de 30, y `procesarCorte()` hace lo mismo *más* escribir siete pestañas. El
 > motor hace ese cálculo en **6 segundos** fuera de Google: el tiempo se va en
 > mover 3.8 millones de celdas a través de una hoja. El plan para sacarlo de ahí
-> está en **[`docs/08-plan-colab.md`](docs/08-plan-colab.md)**. El código heredado de Cobranza
+> está en **[`docs/08-plan-colab.md`](docs/08-plan-colab.md)**, y el paso a paso
+> para migrar en **[`docs/09-migrar-a-colab.md`](docs/09-migrar-a-colab.md)**. El código heredado de Cobranza
 > está completo y probado en producción; lo que falta es adaptarlo a las fuentes
 > y las reglas de CEDIS. El plan, con los datos ya medidos, está en
 > **[`docs/06-plan-cedis.md`](docs/06-plan-cedis.md)**.
@@ -62,6 +63,7 @@ Apps Script. Universidad Corporativa · Coppel.
 | [`replicar-en-otra-area.md`](docs/replicar-en-otra-area.md) | Cómo levantar el mismo tablero para CEDIS o CATd |
 | [`06-plan-cedis.md`](docs/06-plan-cedis.md) | **El plan de trabajo del tablero de CEDIS**: los datos medidos, las siete diferencias con Cobranza y las etapas |
 | [`07-ensayo.md`](docs/07-ensayo.md) | **La guía paso a paso para instalarlo y publicar el primer corte**, con los números que cada paso debe reproducir |
+| [`09-migrar-a-colab.md`](docs/09-migrar-a-colab.md) | **El paso a paso para migrar el corte a Colab**: el token, el cuaderno, la carpeta de paquetes y el botón nuevo |
 | [`08-plan-colab.md`](docs/08-plan-colab.md) | **Mover el cálculo a Colab**, porque el corte no cabe en Apps Script: de dónde salen los archivos, dónde queda el paquete y qué pasa con el histórico |
 
 ## Qué está verificado (CEDIS)

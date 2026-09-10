@@ -23,9 +23,11 @@ function instalar() {
 
   const base = carpeta_(props, CONFIG.props.carpetaBase, CONFIG.carpetas.base, null);
   const crudos = carpeta_(props, CONFIG.props.carpetaCrudos, CONFIG.carpetas.crudos, base);
+  const paquetes = carpeta_(props, CONFIG.props.carpetaPaquetes, CONFIG.carpetas.paquetes, base);
   const archivo = carpeta_(props, CONFIG.props.carpetaArchivo, CONFIG.carpetas.archivo, base);
   reporte.push(`Carpeta base: ${base.getName()} (${base.getId()})`);
   reporte.push(`  Datos crudos: ${crudos.getUrl()}`);
+  reporte.push(`  Paquetes: ${paquetes.getUrl()}`);
   reporte.push(`  Cortes archivados: ${archivo.getUrl()}`);
 
   ['catalogos', 'corte', 'historico'].forEach((clave) => {

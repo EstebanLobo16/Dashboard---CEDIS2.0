@@ -1,0 +1,228 @@
+# Migrar el corte a Colab · paso a paso
+
+El cálculo sale de Apps Script y se va a Colab. Apps Script se queda con lo que
+sabe hacer rápido: publicar.
+
+**Se hace una vez.** Después, el mes normal son dos pasos: correr el cuaderno y
+publicar — o ni eso, si dejas el corte automático del día 12.
+
+| | Antes | Después |
+|---|---|---|
+| Calcular | Apps Script · **19 min** de 30 | Colab · **6 s** |
+| Publicar | lo mismo, más escribir | Apps Script · minutos |
+| El botón del tablero | colgado 20 minutos | responde |
+| Los archivos crudos | se suben aligerados a mano | se dejan tal cual; el cuaderno aligera |
+
+---
+
+## Antes de empezar
+
+| | |
+|---|---|
+| El tablero instalado | Los pasos 1 y 2 de [`07-ensayo.md`](07-ensayo.md) |
+| Un token de GitHub | Para que Colab clone el repo, que es privado |
+| La misma cuenta de Google | Para Drive, Colab y la hoja de Catálogos |
+
+---
+
+## Paso 1 · El token de GitHub
+
+Colab tiene que clonar el repo para usar **el motor de producción**, no una copia.
+
+1. En GitHub: tu foto → **Settings** → **Developer settings** → **Personal access
+   tokens** → **Tokens (classic)** → **Generate new token**.
+2. Nombre: `Colab CEDIS`. Vigencia: la que te deje tu política. Permiso: solo
+   **`repo`**.
+3. Cópialo. **Solo se ve una vez.**
+
+Guárdalo en Colab, no en una celda:
+
+4. Abre [colab.research.google.com](https://colab.research.google.com) → cuaderno
+   nuevo.
+5. Icono de la **llave** (barra izquierda) → **Agregar secreto**.
+6. Nombre `GITHUB_TOKEN`, valor el token, y activa **Acceso del cuaderno**.
+
+> **Nunca lo pegues en una celda.** Un cuaderno se comparte, se exporta y se
+> guarda en Drive; un secreto no viaja con él.
+
+---
+
+## Paso 2 · Actualizar el código en Apps Script
+
+Del repo, vuelve a copiar sobre el editor:
+
+| Archivo | Qué trae |
+|---|---|
+| `00_Config.gs` | La carpeta `Paquetes` y su clave |
+| `03_Almacen.gs` | Que `instalar()` la cree |
+| `07_Paquete.gs` | **`publicarDesdeDrive()`** |
+| `40_Proceso.gs` | El disparador del día 12 publica en vez de calcular |
+| `60_Operacion.gs` | *Publicar el corte del mes* en el menú, y la revisión del día 11 |
+| `90_WebApp.gs` | El botón del tablero |
+| `Index.html` · `JavaScript.html` | Los textos del botón |
+
+Después corre **`instalar()`** otra vez. Es seguro: **no toca nada de lo que ya
+existe**, solo crea lo que falta. Tiene que aparecer un renglón nuevo:
+
+```
+Carpeta base: Tablero CEDIS (…)
+  Datos crudos: https://drive.google.com/…
+  Paquetes: https://drive.google.com/…          ← nuevo
+  Cortes archivados: https://drive.google.com/…
+```
+
+**Abre esa URL de *Paquetes* y guárdala**, que la vas a necesitar en el paso 4.
+
+> ⚠ **Redespliega la app web.** *Implementar → Administrar implementaciones → ✏️
+> → Versión: **Nueva versión***. Sin eso el botón sigue llamando al código viejo
+> y va a tardar veinte minutos.
+
+---
+
+## Paso 3 · Subir el cuaderno a Colab
+
+1. Del repo, descarga `pipeline/colab/corte_cedis.ipynb`.
+2. En Colab: **Archivo → Subir cuaderno** → elígelo.
+3. Guárdalo en tu Drive (**Archivo → Guardar una copia en Drive**) para no volver
+   a subirlo cada mes.
+
+---
+
+## Paso 4 · Ajustar la primera celda
+
+Es lo único que se edita, y solo esta vez:
+
+```python
+CARPETA_CRUDOS   = '/content/drive/MyDrive/Tablero CEDIS/Datos crudos'
+CARPETA_PAQUETES = '/content/drive/MyDrive/Tablero CEDIS/Paquetes'
+PERIODO = ''          # vacío = el mes anterior al día de hoy
+```
+
+> ⚠ **Copia esas rutas, no las escribas.** Para Drive, `Tablero CEDIS` y `Tablero
+> Cedis` son **dos carpetas distintas**, y el tablero solo mira las que creó
+> `instalar()`. Abre las URLs del paso 2 para saber cuáles son, y saca la ruta
+> del panel de archivos de Colab con clic derecho → **Copiar ruta**.
+
+---
+
+## Paso 5 · La primera corrida
+
+**Entorno de ejecución → Ejecutar todo.** La primera vez pide permiso para montar
+Drive y para leer tus hojas: acéptalos con la cuenta dueña del tablero.
+
+Unos minutos. Lo que tiene que salir, en orden:
+
+```
+repo: EstebanLobo16/Dashboard---CEDIS2.0 @ main (0da87fa)
+node: v20.x
+
+catálogos: CED · Catálogos
+  Parametros            18 renglones
+  Regiones              26 renglones
+  NivelesGerencial      57 renglones
+  …
+
+revisiones
+  ok   padrón: 15,252 personas, y en los originales había 15,252
+  ok   finalizaciones: no se perdió ninguna completada al deduplicar
+  …
+
+corte 2026-08 · fecha 2026-08-31 · 6.4 s
+  14,806 colaboradores · 284,945 asignados · 194,425 completados
+  conciliación: correcta
+```
+
+**Los números tienen que ser ésos.** Son los mismos que dio `ensayarCorte()`
+dentro de Apps Script, en 19 minutos. Si no coinciden, algo cambió y hay que
+entender qué antes de publicar.
+
+La última celda termina con la ruta del paquete y su peso (~12 MB).
+
+---
+
+## Paso 6 · Publicar
+
+Cualquiera de los tres, dan lo mismo:
+
+| Dónde | Cómo |
+|---|---|
+| **El tablero** | Botón **Publicar corte** |
+| **La hoja de Catálogos** | Menú *CEDIS → Publicar el corte del mes* |
+| **El editor** | `publicarDesdeDrive('2026-08')` |
+
+Tarda **minutos, no decenas**: solo escribe. Valida el paquete, archiva el
+detalle del mes anterior, escribe las siete pestañas y acumula el histórico.
+
+Republicar el mismo periodo es seguro.
+
+---
+
+## Paso 7 · Dejarlo corriendo
+
+Si ya corriste `automatizar()`, no hay nada que hacer: el disparador del día 12
+**ya publica desde Drive**. Si no:
+
+```
+automatizar()
+```
+
+Queda así:
+
+- **Día 11, 7:00** — revisa que **el paquete** esté. Avisa por correo solo si
+  falta.
+- **Día 12, 6:00** — publica el paquete que esté esperando.
+
+O sea: la parte lenta y frágil quedó automática, y lo que necesita a una persona
+es la parte que tarda seis segundos.
+
+---
+
+## El mes normal, después de esto
+
+1. El área deja sus archivos en **Datos crudos** — igual que siempre, sin
+   aligerar.
+2. Abres el cuaderno y das **Ejecutar todo**. Cinco minutos.
+3. El día 12 se publica solo. (O le das al botón, si tienes prisa.)
+
+---
+
+## Qué pasa con lo de antes
+
+**Nada se borra.** El camino viejo sigue ahí, demotado a alterno:
+
+| | |
+|---|---|
+| `procesarCorte()` | Sigue funcionando. Es el respaldo si Colab no está disponible — con sus 19 minutos |
+| `ensayarCorte()` | Igual. Sirve para contrastar contra el cuaderno |
+| El botón *Actualizar datos* | Igual. Para subir un paquete a mano |
+| Los dos CSV aligerados | El cuaderno los sigue dejando en Datos crudos, para el camino alterno y para dejar rastro |
+
+El histórico y los cortes archivados **no cambian en absoluto**: se construyen
+desde el paquete, y el paquete es el mismo venga de donde venga.
+
+---
+
+## Si algo se atora
+
+| Síntoma | Qué pasa | Qué hacer |
+|---|---|---|
+| *No encontré el secreto GITHUB_TOKEN* | No está o no tiene acceso del cuaderno | Paso 1, y revisa el interruptor |
+| *Falló: git clone* | Token vencido o sin permiso `repo` | Genera otro |
+| *SpreadsheetNotFound* | La hoja no se llama así, o hay dos | Pon su ID en `CATALOGOS_ID` |
+| *No encontré ningún "CEDIS P*.csv"* | El área no dejó los archivos, o con otro nombre | El cuaderno lista lo que sí hay en la carpeta |
+| *No está "cedis-2026-08.json"* | No corriste el cuaderno para ese mes | Córrelo. El error lista lo que sí hay en Paquetes |
+| El botón tarda 20 minutos | No redesplegaste la app web | Paso 2, la advertencia |
+| Los números no son los de arriba | Cambiaron los datos, o un catálogo | Compara contra `ensayarCorte()`: los dos leen lo mismo |
+
+Lo primero, siempre, es **`diagnostico()`**.
+
+---
+
+## Lo que queda pendiente
+
+1. **La etapa D del plan** ([`08-plan-colab.md`](08-plan-colab.md) §3):
+   `acumularHistorico_()` reescribe el histórico completo cada mes, y el
+   histórico crece 25,427 filas mensuales. En un año sería tan caro como el
+   problema del que acabamos de salir.
+2. **Cronometrar la publicación.** Es el número que falta para saber cuánta
+   pista queda.

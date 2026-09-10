@@ -288,3 +288,72 @@ function archivarCorteAnterior_(corte, periodoNuevo) {
   bitacora_('archivar', periodoAnterior, 'archivado', anteriores.length, nombre);
   return nombre;
 }
+
+
+/* ------------------------------------------------------------------ *
+ *  Publicar el paquete que dejó el cuaderno
+ * ------------------------------------------------------------------ */
+
+/**
+ * Publica el paquete que el cuaderno de Colab dejó en la carpeta de Paquetes.
+ *
+ * Es el camino normal desde que el cálculo salió de Apps Script. El motor tarda
+ * 6 segundos fuera de Google y 19 minutos aquí adentro —contra un límite de 30—
+ * porque el tiempo no se va en calcular sino en mover 3.8 millones de celdas a
+ * través de una hoja. Ver docs/08-plan-colab.md.
+ *
+ * El paquete NO se sube por el navegador: se queda en Drive y esto lo lee de
+ * ahí. Así el disparador del día 12 sigue vivo —publica lo que esté esperando—
+ * y nadie tiene que bajar y volver a subir 12 MB.
+ *
+ * Toda la validación, el archivado del detalle anterior y la acumulación del
+ * histórico ya viven en publicarPaquete(): esto solo consigue el archivo.
+ */
+function publicarDesdeDrive(periodo) {
+  const cual = String(periodo || '').trim() || periodoActivo_();
+  const archivo = paqueteDelPeriodo_(cual);
+
+  bitacora_('publicarDesdeDrive', cual, 'lectura',
+    Math.round(archivo.getSize() / 1048576 * 10) / 10, archivo.getName());
+
+  const resultado = publicarPaquete(archivo.getBlob().getDataAsString());
+  resultado.archivo = archivo.getName();
+  return resultado;
+}
+
+/**
+ * El paquete de un periodo, o un error que dice qué falta.
+ *
+ * Se busca por nombre exacto —`cedis-2026-08.json`— y no por "el más reciente":
+ * publicar el mes equivocado porque alguien dejó un archivo viejo es peor que no
+ * publicar. Si hay varios con el mismo nombre gana el más nuevo, que es lo que
+ * pasa cuando el cuaderno se vuelve a correr.
+ */
+function paqueteDelPeriodo_(periodo) {
+  const nombre = `${CONFIG.reporte}-${periodo}.json`;
+  const carpeta = DriveApp.getFolderById(
+    PropertiesService.getScriptProperties().getProperty(CONFIG.props.carpetaPaquetes)
+  );
+
+  const encontrados = [];
+  const archivos = carpeta.getFilesByName(nombre);
+  while (archivos.hasNext()) {
+    const archivo = archivos.next();
+    if (!archivo.isTrashed()) encontrados.push(archivo);
+  }
+
+  if (!encontrados.length) {
+    const hay = [];
+    const todos = carpeta.getFiles();
+    while (todos.hasNext() && hay.length < 15) hay.push(todos.next().getName());
+    throw new Error(
+      `No está "${nombre}" en la carpeta ${CONFIG.carpetas.paquetes}.\n\n` +
+      `Lo que sí hay ahí: ${hay.join(', ') || '(la carpeta está vacía)'}\n\n` +
+      `Corre el cuaderno pipeline/colab/corte_cedis.ipynb en Colab: él deja el ` +
+      `paquete de este periodo en esa carpeta.`
+    );
+  }
+
+  encontrados.sort((a, b) => b.getLastUpdated().getTime() - a.getLastUpdated().getTime());
+  return encontrados[0];
+}
