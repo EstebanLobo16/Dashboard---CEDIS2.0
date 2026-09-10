@@ -283,9 +283,12 @@ imprime el ID de la carpeta base. Ábrela en
 `drive.google.com/drive/folders/<ese-id>` — esa, la que el tablero mira de
 verdad.
 
-El cuaderno ya lo resuelve solo: la celda 4 corre `ruta_real()`, que corrige las
-mayúsculas de la ruta y te dice si tuvo que hacerlo. Si prefieres, escribe el
-nombre exacto en `CARPETA_CRUDOS` y no hace nada.
+El cuaderno ya lo resuelve solo, en dos lugares: la celda 4 corre `ruta_real()`
+sobre `CARPETA_CRUDOS` y `CARPETA_PAQUETES` y te dice si tuvo que corregir algo,
+y la celda del aligerado usa la carpeta que `aligerar_cedis.main()` **devuelve**
+en vez de la constante — así el aligerado y la copia de vuelta no pueden acabar
+mirando carpetas distintas. Si prefieres, escribe el nombre exacto en
+`CARPETA_CRUDOS` y no hace nada.
 
 Lo que **no** debes hacer es crear una segunda carpeta con la otra grafía.
 Acabarías con los datos en una y el tablero mirando la otra, y todo saliendo en

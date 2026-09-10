@@ -285,8 +285,17 @@ def rutas_entrada(carpeta):
 
 
 def main(instrucciones=True):
-    """Aligera los CSV. `instrucciones=False` calla el "lo que sigue" final, que
-    no aplica cuando esto corre dentro del cuaderno del corte."""
+    """Aligera los CSV y devuelve las carpetas que de verdad usó.
+
+    `instrucciones=False` calla el "lo que sigue" final, que no aplica cuando
+    esto corre dentro del cuaderno del corte.
+
+    Devuelve (entrada, salida) YA resueltas: pasaron por ruta_real(), así que si
+    tu carpeta se llama "Tablero Cedis" y la constante decía "Tablero CEDIS",
+    aquí sale la de verdad. Quien llame debe usar ESTAS, no las que mandó: es la
+    única forma de que el aligerado y lo que venga después miren la misma
+    carpeta.
+    """
     entrada, salida = resolver_carpetas()
     rutas = rutas_entrada(entrada)
     columnas = sorted(set(COLUMNAS_PADRON) | set(COLUMNAS_FINALIZACIONES))
@@ -361,7 +370,7 @@ def main(instrucciones=True):
     print(f'\n  {ruta_padron}\n  {ruta_final}')
 
     if not instrucciones:
-        return
+        return entrada, salida
 
     print(f"""
 LO QUE SIGUE
@@ -396,6 +405,7 @@ Lo que esto NO borra, a propósito:
   · Personas de área distinta de CEDIS. El filtro de universo es el catálogo
     CentrosCosto y el de Tipo Posición, no este recorte.
 """)
+    return entrada, salida
 
 
 def revisar(datos, padron, finalizaciones):
