@@ -525,10 +525,8 @@ DEDUPLICAR_FINALIZACIONES   = SI                 (igual, y aquí pesa más: 17.7
 ```
 
 Los tres parámetros de las decisiones 3, 4 y 5 —`SUBESTATUS_COMPLETADOS`,
-`FECHA_MINIMA_VALIDA` y `PUESTOS_FUERA_DEL_PLAN`— **no se sembraron todavía**.
-Llegan en la etapa 4, junto con el código que los aplica: un parámetro sembrado
-que no hace nada es peor que uno que falta, porque quien lea la hoja va a creer
-que está funcionando.
+`FECHA_MINIMA_VALIDA` y `PUESTOS_FUERA_DEL_PLAN`— llegaron en la etapa 4, junto
+con el código que los aplica.
 
 #### La primera corrida real
 
@@ -560,10 +558,8 @@ puestosEspecificosDelCatalogo: 4 · especialización a 5,167 personas ✓
 puestosConPlan: 104 · personasSinPlan: 85
 ```
 
-Los criterios de aceptación 3, 5 y 6 (§10) quedan cumplidos. Los números todavía
-**van a cambiar con la etapa 4**, en tres direcciones conocidas: bajan 85 por
-`PUESTOS_FUERA_DEL_PLAN`, bajan 76 por `FECHA_MINIMA_VALIDA`, y sube el avance
-por `SUBESTATUS_COMPLETADOS` (las 7,224 finalizaciones "Exenta").
+Los criterios de aceptación 3, 5 y 6 (§10) quedan cumplidos. **Éstos no son los
+números finales:** las tres reglas de la etapa 4 todavía no estaban. Ver ahí.
 
 #### Dos defectos que solo aparecieron al correrlo
 
@@ -585,7 +581,7 @@ como si fuera el 094. Es el tipo de dato que nadie vuelve a cuestionar una vez
 publicado. Ahora dice **"varios (3)"**, y `centrosConAtributosMezclados` cuenta
 cuántos son (78, contando dos que además abarcan más de una región).
 
-### Etapa 4 · El motor · 1 día
+### Etapa 4 · El motor · 1 día · **HECHA**
 
 El motor es genérico y casi no se toca. Lo estructural —el padrón, los ejes de
 centro y las listas de centros— se fue con la etapa 2, porque es el mismo
@@ -598,9 +594,53 @@ contrato que la ingesta. Aquí quedan solo las reglas, cuatro cambios chicos:
 | `normalizarCursos_()` | Sin cambios — la agrupación y los alias ya son catálogo |
 | `acumular_()` / `armarTablas_()` | `tipoCobranza` → `tipoCentro` |
 
+#### Los números del corte de agosto
+
+Con las tres reglas puestas, y **éstos ya son los definitivos** salvo lo que
+cambie el área:
+
+```
+14,806 colaboradores · 68.2% de avance · conciliación: correcta
+284,773 asignados · 194,259 completados · 90,514 pendientes
+
+padronLeido 15,252 − categoría 128 − sin puesto en el PDT 85
+            − fecha posterior al corte 233 = 14,806 ✓
+
+fechasCentinela: 76 · completadasPorSubEstatus: 7,224
+cursosDelPlanSinFuente: 0 · personasSinPlan: 0
+26 regiones · 727 centros · 27 cursos · 24,557 filas de FiltroCurso
+```
+
+Las 76 fechas centinela resultaron ser **una sola alta masiva**: 76 personas
+contratadas el 2 de septiembre de 2026, con la asignación de puesto todavía sin
+capturar. Salen del corte de agosto por su fecha de contratación, no por el
+centinela — el aviso lo explica para que nadie busque dos problemas donde hay uno.
+
+#### El bug que apareció al medir "Exenta"
+
+`completadasPorSubEstatus` decía **2,530** y las "Exenta" del crudo eran **7,224**.
+Faltaban 4,694, y al tirar del hilo salió algo peor.
+
+`armar_fuentes_cedis.py` deduplicaba por `(persona, curso)` quedándose con la
+primera fila. Parece equivalente —el motor ya cuenta una vez cada par— pero no lo
+es: **al quedarse con la primera fila se tira el estatus de las demás**, y con él
+las finalizaciones completadas que venían en una repetición posterior. Sobre los
+datos de agosto eso perdía **9,161 finalizaciones completadas** antes de que el
+motor las viera, y el avance salía **3.1 puntos más bajo** sin ningún error que lo
+explicara.
+
+La llave de deduplicación ahora incluye el estatus, así que solo se van las filas
+que de verdad sobran. Cuesta 42,319 filas y 3.5 MB más; el motor sigue contando
+cada par una sola vez porque hace el OR él mismo, en `indiceFinalizaciones_`.
+
+> ⚠ **Esto aplica igual a `celda_aligerar_csv.py` en la etapa 6.** Es la misma
+> operación sobre los mismos archivos, y es exactamente la familia de error que ya
+> costó horas en Cobranza: un recorte que tira una columna y deja a cientos de
+> personas fuera del corte sin explicación.
+
 **Verificación:** `node pipeline/correr_motor.js fuentes.json` contra las fuentes
-de CEDIS, sin desplegar nada. El control algebraico tiene que cuadrar:
-Colaborador y Curso suman lo mismo que el Resumen.
+de CEDIS, sin desplegar nada. El control algebraico cuadra: Colaborador y Curso
+suman lo mismo que el Resumen.
 
 ### Etapa 5 · El tablero · 1 día
 
@@ -634,8 +674,8 @@ La salida es partirlo en dos, que es como el motor los consume de todas formas:
 | Los 3 originales | 517,615 | 25 | **199.7 MB** |
 | Un solo archivo aligerado | 425,811 | 14 | 90.3 MB |
 | **`cedis_padron.csv`** | **15,252** | **11** | **2.4 MB** |
-| **`cedis_finalizaciones.csv`** | **425,811** | **5** | **30.5 MB** |
-| | | | **32.9 MB** |
+| **`cedis_finalizaciones.csv`** | **468,130** | **5** | **34.0 MB** |
+| | | | **36.4 MB** |
 
 **Seis veces más chico que un solo archivo, y ninguno cerca del límite.**
 
@@ -645,6 +685,12 @@ La salida es partirlo en dos, que es como el motor los consume de todas formas:
 
 `cedis_finalizaciones.csv` — `Número Persona`, `Número Colaborador`,
 `Nombre Curso`, `¿Lo Completó?`, `Sub Estatus Aprendizaje`.
+
+⚠ **La llave de deduplicación lleva el estatus.** Deduplicar por `(persona,
+curso)` a secas tira el estatus de las repeticiones y con él 9,161 finalizaciones
+completadas — 3.1 puntos de avance. Ver la etapa 4. La llave correcta es
+`(persona, curso, ¿Lo Completó?, Sub Estatus)`, y con ella el archivo de
+finalizaciones queda en 468,130 filas y 34.0 MB en vez de 425,811 y 30.5.
 
 El script tiene que **abortar** si alguna columna queda vacía — es exactamente el
 error que costó horas en Cobranza, cuando el recorte tiró `Fecha Contratación` y
@@ -659,8 +705,8 @@ publicar.
 - [ ] `revisarFuentes()` reconoce los cuatro archivos
 - [ ] `ensayarCorte('2026-08')` completa y cuadra
 - [ ] Los conteos de diagnóstico se revisan uno por uno contra §2 de este documento:
-      **padrón 15,252 → 14,819 publicados**, 200 sin puesto en el PDT, 76
-      centinela, 157 futura, `cursosDelPlanSinFuente = 0`
+      **padrón 15,252 → 14,806 publicados**, 128 por categoría, 85 sin puesto en
+      el PDT, 233 con fecha posterior, `cursosDelPlanSinFuente = 0`
 - [ ] La especialización le llega a las **5,181 personas** que la tienen en P3
 - [ ] `procesarCorte()` en frío, **cronometrado** contra el límite de 1,800 s
 - [ ] Los números del ensayo se anotan en el README como referencia
@@ -716,11 +762,11 @@ Y tres que son de CEDIS:
 | 1 · Identidad del reporte | ~~0.5~~ **hecha** | 0 |
 | 2 · Ingesta | ~~3~~ **hecha** | 1, 6 |
 | 3 · Semillas y parámetros | ~~2~~ **hecha** | 1 |
-| 4 · Motor | 1 | 2, 3 |
+| 4 · Motor | ~~1~~ **hecha** | 2, 3 |
 | 5 · Tablero | 1 | 4 |
 | 6 · Aligerado | 1 | 0 |
 | 7 · Ensayo | 2 | todas |
-| | **5.5 días restantes** | |
+| | **4.5 días restantes** | |
 
 **Ya no hay nada esperando insumos del área:** las cinco decisiones están tomadas
 y P2 llegó. Lo que queda son las reglas (etapa 4), la interfaz (5), el aligerado
@@ -736,9 +782,10 @@ El tablero de CEDIS está terminado cuando:
 2. `revisarFuentes()` reconoce los cuatro archivos de CEDIS
 3. `ensayarCorte('2026-08')` completa, cuadra el control algebraico y reporta
    `cursosDelPlanSinFuente = 0`
-4. El padrón publicado es de **14,819 colaboradores** de 15,252 leídos, y las 433
-   exclusiones están explicadas una por una en el diagnóstico: 200 por puesto
-   fuera del PDT, 76 por fecha centinela, 157 por fecha posterior al corte
+4. El padrón publicado es de **14,806 colaboradores** de 15,252 leídos, y las 446
+   exclusiones están explicadas una por una en el diagnóstico: 128 por categoría,
+   85 por puesto fuera del PDT, 233 por fecha posterior al corte (de las cuales 76
+   traían además la fecha centinela)
 5. Las **26 regiones** aparecen en el ranking, ninguna como `Sin región`
 6. La especialización de conductores le llega a las **5,181 personas** que la
    tienen en P3, no a 0

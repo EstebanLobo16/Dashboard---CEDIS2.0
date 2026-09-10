@@ -103,6 +103,11 @@ const opciones = {
   nuevoIngresoDias: Number(param('NUEVO_INGRESO_DIAS', 90)),
   sinFechaContratacion: textoClave_(param('SIN_FECHA_CONTRATACION', 'EXCLUIR')),
   baseAntiguedad: textoClave_(param('BASE_ANTIGUEDAD', 'PUESTO')) === 'EMPRESA' ? 'EMPRESA' : 'PUESTO',
+  fechaMinimaValida: param('FECHA_MINIMA_VALIDA', '1950-01-01'),
+  subEstatusCompletados: String(param('SUBESTATUS_COMPLETADOS', '') || '')
+    .split(',').map(textoClave_).filter(Boolean),
+  puestosFueraDelPlan:
+    textoClave_(param('PUESTOS_FUERA_DEL_PLAN', 'EXCLUIR')) === 'PUBLICAR' ? 'PUBLICAR' : 'EXCLUIR',
 
   regionOficial: (cruda) => {
     const k = textoClave_(cruda);

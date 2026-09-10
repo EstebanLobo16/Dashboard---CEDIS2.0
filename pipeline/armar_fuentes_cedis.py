@@ -87,8 +87,21 @@ def leer_csv(carpeta):
                 if persona and persona not in padron:
                     padron[persona] = {destino: fila.get(origen, '').strip()
                                        for origen, destino in COLUMNAS_PADRON.items()}
-                # Mismo criterio que DEDUPLICAR_FINALIZACIONES: persona+curso vale una.
-                llave = (persona, clave(fila['Nombre Curso']))
+                # Se quitan las filas IDÉNTICAS, no los pares persona+curso.
+                #
+                # Deduplicar por (persona, curso) parece equivalente —el motor ya
+                # cuenta una vez cada par— pero no lo es: al quedarse con la
+                # primera fila se tira el estatus de las demás, y con él las
+                # finalizaciones completadas que venían en una repetición
+                # posterior. Sobre los datos de agosto eso perdía **9,161
+                # finalizaciones completadas** antes de que el motor las viera.
+                #
+                # La llave incluye el estatus, así que solo se van las filas que
+                # de verdad sobran. Cuesta 42 mil filas y 3.5 MB más, y el motor
+                # sigue contando cada par una sola vez porque hace el OR él mismo
+                # (ver indiceFinalizaciones_).
+                llave = (persona, clave(fila['Nombre Curso']),
+                         fila['¿Lo Completó?'].strip(), fila['Sub Estatus Aprendizaje'].strip())
                 if llave in vistos:
                     continue
                 vistos.add(llave)

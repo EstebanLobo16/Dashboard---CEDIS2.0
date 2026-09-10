@@ -359,6 +359,7 @@ function resolverPadron_(fuentes, plan, opciones, diagnostico) {
   const origenPuesto = { padron: 0, contratacion: 0, ninguno: 0 };
   const personas = [];
   const vistos = {};
+  const descartadas = { cuenta: 0 };
   let repetidas = 0;
 
   (fuentes.padron || []).forEach((fila) => {
@@ -368,13 +369,13 @@ function resolverPadron_(fuentes, plan, opciones, diagnostico) {
     vistos[persona] = true;
 
     const colaborador = String(fila.numeroColaborador || '').trim() || persona;
-    const fechaContratacion = fila.fechaContratacion || null;
+    const fechaContratacion = fechaUtil_(fila.fechaContratacion, opciones, descartadas);
 
     // La fecha que decide la vigencia: cuándo tomó ESTE puesto. En CEDIS la trae
     // el padrón para todos, pero el respaldo se conserva porque no cuesta nada y
     // el día que una fila venga incompleta es preferible subestimar la
     // antigüedad —asignar de más— a dejar a la persona fuera del corte.
-    let fechaPuesto = fila.fechaPuesto || null;
+    let fechaPuesto = fechaUtil_(fila.fechaPuesto, opciones, descartadas);
     let dePuesto = fechaPuesto ? 'padron' : '';
     if (!fechaPuesto && fechaContratacion) {
       fechaPuesto = fechaContratacion;
@@ -433,15 +434,46 @@ function resolverPadron_(fuentes, plan, opciones, diagnostico) {
     );
   }
 
+  diagnostico.conteos.fechasCentinela = descartadas.cuenta;
+  if (descartadas.cuenta) {
+    diagnostico.avisos.push(
+      `${descartadas.cuenta} fecha(s) del padrón son anteriores a ` +
+      `${opciones.fechaMinimaValida} y se descartaron. Casi siempre son "1 ene 1900": un ` +
+      `centinela de "sin dato" que, tomado en serio, daría 46,000 días de antigüedad y le ` +
+      `asignaría el plan completo a esa persona. Es el parámetro FECHA_MINIMA_VALIDA. ` +
+      `Quien queda sin fecha de puesto cae a la de contratación, así que estas personas no ` +
+      `salen necesariamente del corte por aquí: si su contratación también es posterior al ` +
+      `corte —altas recién capturadas— salen contadas en "fechaPosteriorAlCorte".`
+    );
+  }
+
   revisarCentrosDeCosto_(personas, opciones, diagnostico);
 
-  const filtradas = filtrarPadron_(personas, opciones, diagnostico);
+  const filtradas = filtrarPadron_(personas, plan, opciones, diagnostico);
   diagnostico.conteos.padronLeido = (fuentes.padron || []).length;
   diagnostico.conteos.padronPublicado = filtradas.length;
   diagnostico.conteos.origenFechaDePuesto = origenPuesto;
   return filtradas;
 }
 
+
+/**
+ * La fecha, o null si no se puede creer.
+ *
+ * Las fuentes usan "1 ene 1900" como centinela de "sin dato" —76 personas en el
+ * corte de agosto—. `aFecha_` la interpreta correctamente como una fecha, y ahí
+ * está el problema: una fecha válida de 1900 da 46,000 días de antigüedad, supera
+ * todos los umbrales del plan y le asigna a esa persona los cursos completos, sin
+ * que nada avise. Por debajo del mínimo, no es una fecha: es un hueco.
+ */
+function fechaUtil_(valor, opciones, descartadas) {
+  if (!valor) return null;
+  if (!opciones.fechaMinimaValida) return valor;
+  const dias = diasEntre_(valor, opciones.fechaMinimaValida);
+  if (dias === null || dias >= 0) return valor;
+  if (descartadas) descartadas.cuenta += 1;
+  return null;
+}
 
 /**
  * Avisa de los centros de costo que aparecen en el padrón y que nadie declaró.
@@ -478,11 +510,13 @@ function revisarCentrosDeCosto_(personas, opciones, diagnostico) {
  * Descarta a quien no puede evaluarse, y avisa de cada motivo. Las exclusiones
  * silenciosas son la peor forma de perder gente en un tablero de plantilla.
  */
-function filtrarPadron_(personas, opciones, diagnostico) {
+function filtrarPadron_(personas, plan, opciones, diagnostico) {
   let porCategoria = 0;
   let sinFecha = 0;
   let futuras = 0;
+  let sinPuesto = 0;
   const excluidosSinFecha = [];
+  const puestosFuera = {};
 
   const salida = personas.filter((persona) => {
     // Hallazgo 6 (bis): el PDF lo pide textualmente para CEDIS —«en categoría de
@@ -490,6 +524,20 @@ function filtrarPadron_(personas, opciones, diagnostico) {
     // encendido. Para Cobranza no lo dice y allá queda apagado.
     if (opciones.soloOperacion && textoClave_(persona.categoria).indexOf('OPERACION') !== 0) {
       porCategoria += 1;
+      return false;
+    }
+
+    // Decisión 5 del área: el universo son los puestos del PDT. Quien ocupa un
+    // puesto que ningún plan nombra no entra al tablero — no se le inventa un
+    // plan y tampoco aparece con "0 de 0 cursos", que es lo primero que va a
+    // preguntar quien filtre por su centro.
+    //
+    // Va después del filtro de categoría para que las exclusiones no se
+    // traslapen y la resta del diagnóstico cuadre.
+    if (opciones.puestosFueraDelPlan === 'EXCLUIR' && !plan[persona.puestoClave]) {
+      sinPuesto += 1;
+      const cual = persona.puesto || '(sin puesto)';
+      puestosFuera[cual] = (puestosFuera[cual] || 0) + 1;
       return false;
     }
 
@@ -535,9 +583,24 @@ function filtrarPadron_(personas, opciones, diagnostico) {
   });
 
   diagnostico.conteos.excluidosPorCategoria = porCategoria;
+  diagnostico.conteos.excluidosSinPuestoEnElPlan = sinPuesto;
   diagnostico.conteos.sinFechaDeContratacion = sinFecha;
   diagnostico.conteos.fechaPosteriorAlCorte = futuras;
   diagnostico.personasSinFecha = excluidosSinFecha;
+  diagnostico.puestosFueraDelPlan = puestosFuera;
+
+  // El conteo por puesto y no la lista de personas: lo accionable es el puesto.
+  // O le toca plan y hay que agregarlo al PDT, o se llama distinto que en el
+  // plan y le falta un renglón en AliasPuestos.
+  const fuera = Object.keys(puestosFuera).sort((a, b) => puestosFuera[b] - puestosFuera[a]);
+  if (fuera.length) {
+    diagnostico.avisos.push(
+      `${sinPuesto} persona(s) quedaron fuera porque su puesto no está en ningún plan ` +
+      `(${fuera.length} puestos): ${fuera.slice(0, 12).map((p) => `${p} (${puestosFuera[p]})`).join(', ')}` +
+      `${fuera.length > 12 ? `, y ${fuera.length - 12} más` : ''}. Si a alguno le toca plan, ` +
+      `agrégalo al PDT; si se llama distinto que en el plan, agrégalo a AliasPuestos.`
+    );
+  }
 
   if (sinFecha) {
     const cual = opciones.baseAntiguedad === 'EMPRESA' ? 'de contratación' : 'de asignación de puesto';
@@ -573,6 +636,7 @@ function indiceFinalizaciones_(filas, plan, opciones, diagnostico) {
   const indice = {};
   const cursosVistos = {};
   let filasUsadas = 0;
+  let porSubEstatus = 0;
 
   (filas || []).forEach((fila) => {
     const cursoClave = textoClave_(fila.curso);
@@ -581,7 +645,8 @@ function indiceFinalizaciones_(filas, plan, opciones, diagnostico) {
 
     // Hallazgo 2: el cruce es por nombre normalizado, no literal. Tres de los
     // cursos que salían en 0% eran puro acento y mayúscula.
-    const completo = esAfirmativo_(fila.completo);
+    const completo = esCompleta_(fila, opciones);
+    if (completo && !esAfirmativo_(fila.completo)) porSubEstatus += 1;
     filasUsadas += 1;
 
     // Los dos identificadores, pero sin repetir: en la gente que todavía carga
@@ -624,6 +689,14 @@ function indiceFinalizaciones_(filas, plan, opciones, diagnostico) {
 
   diagnostico.conteos.finalizacionesLeidas = (filas || []).length;
   diagnostico.conteos.finalizacionesUsadas = filasUsadas;
+  diagnostico.conteos.completadasPorSubEstatus = porSubEstatus;
+  if (porSubEstatus) {
+    diagnostico.avisos.push(
+      `${porSubEstatus} finalización(es) cuentan como completadas por su Sub Estatus ` +
+      `(${opciones.subEstatusCompletados.join(', ')}) aunque "¿Lo Completó?" diga que no. ` +
+      `Es el parámetro SUBESTATUS_COMPLETADOS.`
+    );
+  }
   diagnostico.conteos.cursosEnFinalizaciones = Object.keys(cursosVistos).length;
   diagnostico.conteos.cursosDelPlanSinFuente = huerfanos.length;
   diagnostico.cursosSinFuente = huerfanos;
@@ -633,6 +706,26 @@ function indiceFinalizaciones_(filas, plan, opciones, diagnostico) {
 function esAfirmativo_(valor) {
   const texto = textoClave_(valor);
   return texto === 'SI' || texto === 'S' || texto === 'TRUE' || texto === '1';
+}
+
+/**
+ * ¿Esta finalización cuenta como completada?
+ *
+ * Las dos columnas del reporte no dicen lo mismo, y ninguna sola alcanza:
+ *
+ *   ¿Lo Completó? = Si   incluye "Finalización omitida" (42,315 filas), que el
+ *                        área sí cuenta como completada.
+ *   ¿Lo Completó? = No   incluye "Exenta" (7,224 filas), que el área TAMBIÉN
+ *                        cuenta como completada — a alguien exento no se le
+ *                        puede pedir el curso.
+ *
+ * Así que manda la columna, y encima de ella los sub estatus que el área declare
+ * equivalentes a completado. Cuáles son es un renglón del catálogo, no código.
+ */
+function esCompleta_(fila, opciones) {
+  if (esAfirmativo_(fila.completo)) return true;
+  const sub = textoClave_(fila.subEstatus);
+  return Boolean(sub) && (opciones.subEstatusCompletados || []).indexOf(sub) !== -1;
 }
 
 

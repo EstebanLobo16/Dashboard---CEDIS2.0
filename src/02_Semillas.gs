@@ -52,6 +52,21 @@ const SEMILLAS = Object.freeze({
       'las 15,252 personas, así que esto casi no aplica: solo alcanza a las 76 fechas centinela ' +
       'y a las 157 posteriores al corte. EXCLUIR = sale del tablero y Control deja constancia. ' +
       'ANTIGUEDAD_CERO = entra sin cursos. TODOS = recibe el plan completo.'],
+    ['SUBESTATUS_COMPLETADOS', 'Exenta', 'texto',
+      'Sub estatus que cuentan como completado aunque "¿Lo Completó?" diga que no, separados ' +
+      'por coma. El área confirmó que "Exenta" cuenta: a alguien exento no se le puede pedir el ' +
+      'curso. Son 7,224 finalizaciones en el corte de agosto. "Finalización omitida" no hace ' +
+      'falta aquí: esas ya vienen como "Si" en la columna.'],
+    ['FECHA_MINIMA_VALIDA', '1950-01-01', 'fecha',
+      'Una fecha anterior a esta no es una fecha: es un hueco. Las fuentes usan "1 ene 1900" ' +
+      'como centinela de "sin dato" —76 personas en agosto— y tomarla en serio da 46,000 días ' +
+      'de antigüedad, supera todos los umbrales del plan y le asigna los cursos completos a esa ' +
+      'persona sin que nada avise. Vacío = sin revisión.'],
+    ['PUESTOS_FUERA_DEL_PLAN', 'EXCLUIR', 'texto',
+      'Qué hacer con quien ocupa un puesto que ningún PDT nombra. EXCLUIR = no entra al tablero; ' +
+      'es lo que decidió el área. PUBLICAR = entra y aparece con "0 de 0 cursos". En ninguno de ' +
+      'los dos casos mueve el avance: esas personas aportan 0 asignados y 0 completados. El día ' +
+      'que Importación tenga su propio PDT, se agrega la fuente y entran solas.'],
     ['DIAS_POR_MES', '30', 'numero',
       'Conversión del "Rango de meses para cursar" del plan a días. Un curso aplica cuando ' +
       'dias_en_puesto >= minimo_del_rango por este valor.'],

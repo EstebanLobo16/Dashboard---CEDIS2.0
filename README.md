@@ -3,14 +3,16 @@
 Réplica del tablero de Cobranza sobre datos de CEDIS, íntegramente en Google
 Apps Script. Universidad Corporativa · Coppel.
 
-> **En construcción · etapas 1, 2 y 3 de 7 terminadas.** El código heredado de Cobranza
+> **En construcción · etapas 1 a 4 de 7 terminadas.** El código heredado de Cobranza
 > está completo y probado en producción; lo que falta es adaptarlo a las fuentes
 > y las reglas de CEDIS. El plan, con los datos ya medidos, está en
 > **[`docs/06-plan-cedis.md`](docs/06-plan-cedis.md)**.
 >
-> **El motor ya corre contra los datos reales de CEDIS**, fuera de Apps Script:
-> 14,967 colaboradores, 63.9% de avance, conciliación correcta, en 3.1 segundos.
-> Ver `docs/06-plan-cedis.md` §6, etapa 3.
+> **El motor ya corre contra los datos reales de CEDIS**, fuera de Apps Script,
+> con todas las reglas del área puestas: **14,806 colaboradores, 68.2% de avance,
+> conciliación correcta**, en 5.9 segundos. Ver `docs/06-plan-cedis.md` §6.
+>
+> Falta la interfaz (etapa 5), el aligerado (6) y el ensayo dentro de Apps Script (7).
 
 ## Por dónde empezar
 

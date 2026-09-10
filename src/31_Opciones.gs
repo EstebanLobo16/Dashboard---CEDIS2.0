@@ -25,6 +25,11 @@ function opcionesDelCorte_(periodo, fechaCorte) {
     nuevoIngresoDias: parametroNumero_('NUEVO_INGRESO_DIAS', 90),
     sinFechaContratacion: sinFechaContratacion_(),
     baseAntiguedad: baseAntiguedad_(),
+    fechaMinimaValida: parametro_('FECHA_MINIMA_VALIDA', '1950-01-01'),
+    subEstatusCompletados: listaClave_(parametro_('SUBESTATUS_COMPLETADOS', '')),
+    puestosFueraDelPlan:
+      textoClave_(parametro_('PUESTOS_FUERA_DEL_PLAN', 'EXCLUIR')) === 'PUBLICAR'
+        ? 'PUBLICAR' : 'EXCLUIR',
 
     // Funciones, no tablas: el motor pregunta y el catálogo responde.
     regionOficial: regionOficial_,
@@ -54,6 +59,11 @@ function opcionesDelCorte_(periodo, fechaCorte) {
         .filter(Boolean);
     },
   };
+}
+
+/** Un parámetro con varios valores separados por coma, ya normalizados. */
+function listaClave_(valor) {
+  return String(valor || '').split(',').map(textoClave_).filter(Boolean);
 }
 
 /**
