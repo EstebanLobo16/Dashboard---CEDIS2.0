@@ -49,7 +49,12 @@ Guárdalo en Colab, no en una celda:
 
 ## Paso 2 · Actualizar el código en Apps Script
 
-Del repo, vuelve a copiar sobre el editor:
+> **No se borra ningún archivo.** El proyecto sigue teniendo los mismos 19, más
+> el manifiesto. Estos ocho **cambiaron** y hay que pegarlos encima; los otros
+> once se quedan exactamente como están. Si borraras alguno, el tablero deja de
+> arrancar: todo cuelga de todo.
+
+Del repo, vuelve a copiar **solo estos ocho** sobre el editor:
 
 | Archivo | Qué trae |
 |---|---|
@@ -60,6 +65,27 @@ Del repo, vuelve a copiar sobre el editor:
 | `60_Operacion.gs` | *Publicar el corte del mes* en el menú, y la revisión del día 11 |
 | `90_WebApp.gs` | El botón del tablero |
 | `Index.html` · `JavaScript.html` | Los textos del botón |
+
+Y estos **once no se tocan**, aunque sigan siendo necesarios:
+
+| Archivo | Por qué se queda |
+|---|---|
+| `01_Esquema.gs` | El contrato de datos. Lo usa el validador del paquete |
+| `02_Semillas.gs` | El contenido inicial de los catálogos |
+| `04_Catalogos.gs` | Lee las reglas de la hoja |
+| `05_Acceso.gs` | Quién puede publicar. La reja de `publicarPaquete()` |
+| `06_Bitacora.gs` | El registro de quién hizo qué |
+| `10_Util.gs` | Fechas, normalización de texto, rangos |
+| `20_Fuentes.gs` · `30_Motor.gs` · `31_Opciones.gs` | El camino alterno: calcular aquí si Colab no está |
+| `50_Historico.gs` | Navegar meses cerrados y recuperar su detalle |
+| `Stylesheet.html` | La interfaz |
+| `appsscript.json` | El manifiesto: permisos y servicio de Drive |
+
+> **Ojo con los catálogos.** Volver a copiar un `.gs` actualiza el **código**. Si
+> lo que cambió fue una **regla** —un alias, un nivel gerencial— eso vive en la
+> hoja `CED · Catálogos`, y `instalar()` **no pisa una pestaña que ya tenga
+> renglones**. Esas se editan en la hoja, y después *CEDIS → Aplicar cambios de
+> los catálogos*.
 
 Después corre **`instalar()`** otra vez. Es seguro: **no toca nada de lo que ya
 existe**, solo crea lo que falta. Tiene que aparecer un renglón nuevo:
