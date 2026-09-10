@@ -91,7 +91,7 @@ Después corre **`instalar()`** otra vez. Es seguro: **no toca nada de lo que ya
 existe**, solo crea lo que falta. Tiene que aparecer un renglón nuevo:
 
 ```
-Carpeta base: Tablero CEDIS (…)
+Carpeta base: Tablero CEDIS (1AbC…)      ← puede decir "Tablero Cedis": ver más abajo
   Datos crudos: https://drive.google.com/…
   Paquetes: https://drive.google.com/…          ← nuevo
   Cortes archivados: https://drive.google.com/…
@@ -124,10 +124,11 @@ CARPETA_PAQUETES = '/content/drive/MyDrive/Tablero CEDIS/Paquetes'
 PERIODO = ''          # vacío = el mes anterior al día de hoy
 ```
 
-> ⚠ **Copia esas rutas, no las escribas.** Para Drive, `Tablero CEDIS` y `Tablero
-> Cedis` son **dos carpetas distintas**, y el tablero solo mira las que creó
-> `instalar()`. Abre las URLs del paso 2 para saber cuáles son, y saca la ruta
-> del panel de archivos de Colab con clic derecho → **Copiar ruta**.
+> **Si tu carpeta base se llama distinto** —`Tablero Cedis`, con otra grafía—
+> déjalo así y no la renombres: el cuaderno corrige las mayúsculas solo y te
+> avisa que lo hizo. Lo que sí tiene que coincidir es el **resto** de la ruta.
+> Si no estás seguro, ábrela con las URLs del paso 2 y saca la ruta del panel de
+> archivos de Colab con clic derecho → **Copiar ruta**.
 
 ---
 
