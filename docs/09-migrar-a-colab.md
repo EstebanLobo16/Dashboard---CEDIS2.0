@@ -122,7 +122,15 @@ Es lo único que se edita, y solo esta vez:
 CARPETA_CRUDOS   = '/content/drive/MyDrive/Tablero CEDIS/Datos crudos'
 CARPETA_PAQUETES = '/content/drive/MyDrive/Tablero CEDIS/Paquetes'
 PERIODO = ''          # vacío = el mes anterior al día de hoy
+
+RAMA = 'claude/tablero-cedis-4pp3d1'
 ```
+
+> **La rama importa.** El cuaderno clona el repo para usar el motor de
+> producción, y `main` todavía tiene el tablero de **Cobranza**: no trae
+> `pipeline/aligerar_cedis.py`. Si `RAMA` dice `main`, la celda 4 se queja de
+> que la rama no trae el motor. Cuando el trabajo de CEDIS se integre a `main`,
+> cambia esa línea y ya.
 
 > **Si tu carpeta base se llama distinto** —`Tablero Cedis`, con otra grafía—
 > déjalo así y no la renombres: el cuaderno corrige las mayúsculas solo y te
